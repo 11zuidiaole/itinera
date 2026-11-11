@@ -184,17 +184,23 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 (function(){
 const KEY='schedule-v2';
 const PAL=['#a8e6cf','#dcedc1','#ffe6a1','#ffabab','#ff677d','#a6d4f2','#7fb2e5','#cbb7f2','#a98be0'];
-function fg(hex){const n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#141414':'#fff';}
+function fg(hex){if(!/^#[0-9a-fA-F]{6}$/.test(hex||''))return '#141414';const n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#141414':'#fff';}
 const PER={am:'上午',pm:'下午',eve:'晚上'};
 const PERK={am:'08:00',pm:'13:00',eve:'18:00'};
 const DURS=[15,30,45,60,90,120,150,180,240];
 let S={templates:[],events:[]};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
-const OLDC={"#ffcb3f":"#ffe6a1","#ff6f40":"#ffabab","#ff3d6b":"#ff677d","#ff4c92":"#ff677d","#d23f94":"#a98be0","#a83fc4":"#a98be0","#4a2c60":"#a98be0","#2b2d6f":"#7fb2e5","#6093ca":"#7fb2e5","#3dc1d9":"#a6d4f2","#f7cd5b":"#ffe6a1","#ed784e":"#ffabab","#eb4f6d":"#ff677d","#ec5a91":"#ff677d","#c24b91":"#a98be0","#9c46be":"#a98be0","#462d5d":"#a98be0","#2b2d6b":"#7fb2e5","#6b92c5":"#7fb2e5","#66bed6":"#a6d4f2"};[...S.events,...S.templates].forEach(x=>{if(OLDC[x.color])x.color=OLDC[x.color];});
+const OLDC={"#ffcb3f":"#ffe6a1","#ff6f40":"#ffabab","#ff3d6b":"#ff677d","#ff4c92":"#ff677d","#d23f94":"#a98be0","#a83fc4":"#a98be0","#4a2c60":"#a98be0","#2b2d6f":"#7fb2e5","#6093ca":"#7fb2e5","#3dc1d9":"#a6d4f2","#f7cd5b":"#ffe6a1","#ed784e":"#ffabab","#eb4f6d":"#ff677d","#ec5a91":"#ff677d","#c24b91":"#a98be0","#9c46be":"#a98be0","#462d5d":"#a98be0","#2b2d6b":"#7fb2e5","#6b92c5":"#7fb2e5","#66bed6":"#a6d4f2"};try{[...(S.events||[]),...(S.templates||[])].forEach(x=>{if(x&&OLDC[x.color])x.color=OLDC[x.color];});}catch(e){}
 const SUPA_URL='https://jqvguqqcvtassurhuqrs.supabase.co',SUPA_KEY='sb_publishable_VutfQkyu6XcxGAUT5fA_Eg_g5owXqQR';
 const T_BOARD='itinera_boards',T_HIST='itinera_history',SYNC_FLAG='itinera-synced-uid';
 let sb=null,sbUser=null,pushTimer=null,pushing=false,pushAgain=false,syncMsg='';
 function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function clean(){
+  const T=v=>/^([01]\d|2[0-3]):[0-5]\d$/.test(v||'')?v:'';
+  S.templates=(Array.isArray(S.templates)?S.templates:[]).filter(t=>t&&typeof t==='object').map(t=>({...t,name:String(t.name??''),color:/^#[0-9a-fA-F]{6}$/.test(t.color||'')?t.color:PAL[0]}));
+  S.events=(Array.isArray(S.events)?S.events:[]).filter(e=>e&&typeof e==='object'&&/^\d{4}-\d{2}-\d{2}$/.test(e.date||'')).map(e=>({...e,id:e.id||Math.random().toString(36).slice(2),name:String(e.name??''),note:e.note==null?'':String(e.note),color:/^#[0-9a-fA-F]{6}$/.test(e.color||'')?e.color:PAL[0],start:T(e.start),end:T(e.end),period:PER_OK.includes(e.period)?e.period:''}));
+}
+const PER_OK=['am','pm','eve'];
 function save(){S.updatedAt=Date.now();saveLocal();if(sbUser){clearTimeout(pushTimer);pushTimer=setTimeout(push,800);syncSet('保存中…');}}
 
 const $=id=>document.getElementById(id);
@@ -254,6 +260,10 @@ const displaySort=ds=>evsOn(ds).sort((a,b)=>rank(a)-rank(b)||byTime(a,b));
 const tagHTML=e=>`<div class="tag" style="background:${e.color};color:${fg(e.color)}">${e.pinned?PIN(8):''}${ticon(e,10)}${esc(e.name)}</div>`;
 
 function render(keep){
+  try{clean();renderInner(keep);}
+  catch(err){$('main').innerHTML=`<div class="empty" style="padding:40px 20px;color:#c0392b;font-size:13px;text-align:left;white-space:pre-wrap">页面出错了，截图发给我：\n${esc(String(err&&err.stack||err)).slice(0,600)}</div>`;}
+}
+function renderInner(keep){
   const main=$('main'),st=main.scrollTop;
   document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   if(view==='month')renderMonth();else if(view==='week')renderWeek();else renderDay();
