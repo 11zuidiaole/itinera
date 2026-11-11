@@ -68,6 +68,17 @@ main{flex:1;overflow:auto;position:relative;padding-bottom:calc(100px + env(safe
 .rc{position:relative;display:flex;align-items:center;gap:12px;padding:14px 8px 14px 0;background:var(--soft);border-radius:12px;cursor:pointer;transition:transform .2s;overflow:hidden}
 .rc.nt{transition:none}
 .row:not(.sw) .rdel{visibility:hidden}
+.row{touch-action:pan-y;transition:height .24s ease,margin .24s ease,opacity .24s ease}
+.row.gone{margin-bottom:0;opacity:0}
+.rc{will-change:transform;transition:transform .3s cubic-bezier(.2,.8,.2,1)!important}
+.rc.nt{transition:none!important}
+.rdel{display:flex;align-items:center;justify-content:flex-start;padding-left:24px;transition:width .3s cubic-bezier(.2,.8,.2,1)}
+.rdel.nt{transition:none}
+main{touch-action:pan-x pan-y}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:all .25s ease;background:#1d1d1f;color:#fff;border-radius:14px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;font-size:14px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:calc(100vw - 40px);white-space:nowrap}
+.toast span{overflow:hidden;text-overflow:ellipsis}
+.toast.on{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.toast button{border:0;background:none;color:#5fd3c6;font-size:14px;font-weight:600;padding:6px 8px;cursor:pointer}
 .dotc{width:5px;align-self:stretch;margin:-14px 0;flex:none}
 .info{flex:1;min-width:0}
 .nm{font-size:15px;font-weight:600}
@@ -164,6 +175,7 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 <div class="qd" id="qd"></div>
 <button class="fab" id="fab" aria-label="新建活动">+</button>
 <div class="dz" id="dz">松手删除</div>
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo">撤销</button></div>
 <div class="mask" id="mask"></div>
 <div class="sheet" id="sheet"></div>
 
@@ -340,20 +352,28 @@ function renderDay(){
 
 /* row gestures */
 let suppress=false,openRow=null;
-function closeOpen(){if(openRow){const r=openRow;r.querySelector('.rc').style.transform='';setTimeout(()=>r.classList.remove('sw'),220);openRow=null;}}
-function delEvent(id){S.events=S.events.filter(e=>e.id!==id);save();render(true);}
+function closeOpen(){if(openRow){const r=openRow;r.querySelector('.rc').style.transform='';r.querySelector('.rdel').style.width='';setTimeout(()=>r.classList.remove('sw'),300);openRow=null;}}
+let lastDel=null,toastT=0;
+function delEvent(id){
+  const i=S.events.findIndex(e=>e.id===id);if(i<0)return;
+  const ev=S.events[i];S.events.splice(i,1);save();render(true);
+  lastDel={ev,i};$('toastMsg').textContent=`已删除「${ev.name}」`;
+  $('toast').classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>$('toast').classList.remove('on'),5000);
+}
+$('toastUndo').onclick=()=>{if(!lastDel)return;S.events.splice(Math.min(lastDel.i,S.events.length),0,lastDel.ev);lastDel=null;save();render(true);$('toast').classList.remove('on');};
 function bindRows(){
   const m=$('main');
   m.querySelectorAll('.row').forEach(row=>{
     const rc=row.querySelector('.rc'),id=row.dataset.id,isTodo=!!row.closest('#todo');
     rc.onclick=()=>{if(suppress)return;if(openRow){closeOpen();return;}openEdit(S.events.find(e=>e.id===id));};
-    row.querySelector('.rdel').onclick=()=>delEvent(id);
     row.querySelector('.pin').onclick=ev=>{ev.stopPropagation();if(suppress)return;const e=S.events.find(x=>x.id===id);e.pinned=!e.pinned;save();render(true);};
-    let x0,y0,mode,timer,base,ghost,offY,dx=0;
+    let x0,y0,mode,timer,base,ghost,offY,dx=0,raf=0,vx=0,lx=0,lt=0,W=0;
+    const del=row.querySelector('.rdel');
+    const paint=()=>{raf=0;rc.style.transform=`translate3d(${dx}px,0,0)`;del.style.width=Math.max(84,-dx)+'px';};
     row.addEventListener('touchstart',ev=>{
-      if(ev.touches.length>1){clearTimeout(timer);if(mode==='swipe'){rc.style.transform='';rc.classList.remove('nt');}mode=null;return;}
-      const t=ev.touches[0];x0=t.clientX;y0=t.clientY;mode='pending';dx=0;
-      base=openRow===row?-84:0;
+      if(ev.touches.length>1){clearTimeout(timer);if(mode==='swipe'){dx=base;paint();rc.classList.remove('nt');del.classList.remove('nt');}mode=null;return;}
+      const t=ev.touches[0];x0=lx=t.clientX;y0=t.clientY;lt=performance.now();vx=0;mode='pending';
+      base=openRow===row?-84:0;dx=base;W=row.offsetWidth;
       if(openRow&&openRow!==row)closeOpen();
       if(isTodo)timer=setTimeout(()=>startDrag(t),420);
     },{passive:true});
@@ -361,20 +381,36 @@ function bindRows(){
       if(ev.touches.length>1||!mode)return;
       const t=ev.touches[0],mx=t.clientX-x0,my=t.clientY-y0;
       if(mode==='pending'){
-        if(Math.abs(mx)>8||Math.abs(my)>8){clearTimeout(timer);mode=(Math.abs(mx)>Math.abs(my))?'swipe':'scroll';if(mode==='swipe'){rc.classList.add('nt');row.classList.add('sw');}}
+        if(Math.abs(mx)>6||Math.abs(my)>6){clearTimeout(timer);mode=(Math.abs(mx)>Math.abs(my)*1.2)?'swipe':'scroll';if(mode==='swipe'){rc.classList.add('nt');del.classList.add('nt');row.classList.add('sw');x0=t.clientX-(dx-base);}}
       }
-      if(mode==='swipe'){ev.preventDefault();dx=Math.min(0,Math.max(-110,base+mx));rc.style.transform=`translateX(${dx}px)`;}
+      if(mode==='swipe'){
+        ev.preventDefault();
+        const now=performance.now();if(now>lt){vx=0.7*vx+0.3*((t.clientX-lx)/(now-lt));}lx=t.clientX;lt=now;
+        let raw=base+(t.clientX-x0);
+        if(raw>0)raw=raw*0.25;
+        dx=Math.max(raw,-W);
+        if(!raf)raf=requestAnimationFrame(paint);
+      }
       else if(mode==='drag'){ev.preventDefault();moveDrag(t);}
     },{passive:false});
     const end=()=>{
       clearTimeout(timer);
       if(mode==='swipe'){
-        rc.classList.remove('nt');suppress=true;setTimeout(()=>suppress=false,60);
-        if(dx<-42){rc.style.transform='translateX(-84px)';openRow=row;}else{rc.style.transform='';setTimeout(()=>{if(openRow!==row)row.classList.remove('sw');},220);if(openRow===row)openRow=null;}
+        cancelAnimationFrame(raf);raf=0;
+        rc.classList.remove('nt');del.classList.remove('nt');suppress=true;setTimeout(()=>suppress=false,80);
+        if(dx<-W*0.55||(vx<-1.1&&dx<-110)){fullDelete();}
+        else if(dx<-40||(vx<-0.35&&dx<-10)){dx=-84;paint();openRow=row;}
+        else{dx=0;paint();setTimeout(()=>{if(openRow!==row)row.classList.remove('sw');},300);if(openRow===row)openRow=null;}
       }else if(mode==='drag')endDrag();
       mode=null;
     };
     row.addEventListener('touchend',end);row.addEventListener('touchcancel',end);
+    function fullDelete(){
+      openRow=null;dx=-W;paint();
+      setTimeout(()=>{row.style.height=row.offsetHeight+'px';row.offsetHeight;row.classList.add('gone');row.style.height='0px';},180);
+      setTimeout(()=>delEvent(id),420);
+    }
+    del.onclick=()=>fullDelete();
 
     function startDrag(t){
       mode='drag';try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}
@@ -433,10 +469,10 @@ $('main').addEventListener('touchstart',e=>{
 },{passive:true});
 $('main').addEventListener('touchmove',e=>{
   if(e.touches.length!==2||!pinch)return;
-  e.preventDefault();if(pinch.done)return;
+  if(pinch.done)return;
   const[a,b]=e.touches,r=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/pinch.d;
   if(r>1.3){pinch.done=true;zoomIn(pinch.x,pinch.y);}else if(r<0.77){pinch.done=true;zoomOut();}
-},{passive:false});
+},{passive:true});
 $('main').addEventListener('touchend',e=>{if(e.touches.length===0&&pinch)setTimeout(()=>{pinch=null;},80);});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 let tx=0,ty=0;
