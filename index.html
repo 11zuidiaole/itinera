@@ -258,8 +258,10 @@ function transport(e){
 const ticon=(e,s)=>{const x=transport(e);return x?`<svg class="ti" width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="currentColor" d="${TI[x.t]}"/></svg>`:''};
 const codeOf=e=>{const x=transport(e);return x&&x.c?x.c:''};
 const cm=t=>t.endsWith(':00')?String(+t.slice(0,2)):t.replace(/^0/,'');
-function tCompact(e){if(e.start&&e.end)return cm(e.start)+'-'+cm(e.end);if(e.start)return cm(e.start)+'~';if(e.end)return '~'+cm(e.end);return '';}
-function tShort(e){if(e.start&&e.end)return e.start+'-'+e.end;if(e.start)return e.start+'~';if(e.end)return '~'+e.end;return '';}
+const nextDay=e=>!!(e.start&&e.end&&e.end<=e.start);
+const wrapT=m=>{m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60);};
+function tCompact(e){if(e.start&&e.end)return cm(e.start)+'-'+(nextDay(e)?'次日':'')+cm(e.end);if(e.start)return cm(e.start)+'~';if(e.end)return '~'+cm(e.end);return '';}
+function tShort(e){if(e.start&&e.end)return e.start+'-'+(nextDay(e)?'次日 ':'')+e.end;if(e.start)return e.start+'~';if(e.end)return '~'+e.end;return '';}
 function timeText(e){
   const tt=tShort(e);if(tt)return tt;
   return PER[e.period]||'';
@@ -334,7 +336,7 @@ function renderWeek(){
     h+=`<div class="col" data-d="${ds}">`;
     const items=evsOn(ds).filter(timed).map(e=>{
       let s,en,k='';
-      if(e.start&&e.end){s=toMin(e.start);en=Math.max(toMin(e.end),s+30);}
+      if(e.start&&e.end){s=toMin(e.start);en=nextDay(e)?1440:Math.max(toMin(e.end),s+30);}
       else if(e.start){s=toMin(e.start);en=s+45;k='open';}
       else{en=toMin(e.end);s=en-45;k='endonly';}
       return {e,s,en,k};
@@ -592,7 +594,7 @@ function drawEdit(){
   <div class="fr"><div class="fl flx">常用${tpls.length?`<button class="tedit" id="tEditBtn">${tplEdit?'完成':'编辑'}</button>`:''}</div>${tpls.length?`<div class="chips${tplEdit?' editing':''}" id="tplChips">${tpls.map(t=>`<button class="chip${tplEdit?' ed':''}${tplEdit&&tplSel===t.id?' sel':''}${!tplEdit&&D.tpl===t.id?' on':''}" data-t="${t.id}" style="background:${t.color};color:${fg(t.color)}">${esc(t.name)}${tplEdit?'<span class="cx" aria-label="删除">×</span>':''}</button>`).join('')}${tplEdit?'<input class="chip addin" id="tAddIn" placeholder="＋ 添加" enterkeyhint="done" maxlength="20">':''}</div>${tplEdit?tplPanel():''}`:`<div class="chips" id="tplChips"><input class="chip addin" id="tAddIn" placeholder="＋ 添加常用" enterkeyhint="done" maxlength="20"></div>`}</div>
   <div class="fr"><div class="fl">名称</div><input type="text" id="eName" value="${esc(D.name)}" placeholder="要做什么"></div>
   <div class="fr"><div class="fl">日期 <span id="eWd"></span></div><input type="date" id="eDate" value="${D.date}"><div class="chips" id="dq" style="margin-top:8px">${[['今天',0],['明天',1],['后天',2]].map(([t,n])=>`<button class="chip plain" data-n="${n}">${t}</button>`).join('')}</div></div>
-  <div class="fr two"><div><div class="fl">开始</div>${tpHTML('eStart',D.start)}</div><div><div class="fl">结束</div>${tpHTML('eEnd',D.end)}</div></div>
+  <div class="fr two"><div><div class="fl">开始</div>${tpHTML('eStart',D.start)}</div><div><div class="fl">结束 <span id="eNext"></span></div>${tpHTML('eEnd',D.end)}</div></div>
   <div class="fr" id="perWrap"><div class="fl">大概什么时候</div><div class="chips" id="per">${per}</div></div>
   <div class="fr"><div class="fl">颜色 · 不选会自动配</div><div class="sw"><span data-c="" class="auto${!D.color?' on':''}">自动</span>${PAL.map(c=>`<span data-c="${c}" class="${c===D.color?'on':''}" style="background:${c}"></span>`).join('')}</div></div>
   <div class="fr"><div class="fl">备注</div><input type="text" id="eNote" value="${esc(D.note||'')}" placeholder="可不填"></div>
@@ -604,7 +606,7 @@ function drawEdit(){
   const dSync=()=>{const v=$('eDate').value;$('eWd').textContent=v?'· '+wdName(parse(v)):'';const t=ymd(new Date());sh.querySelectorAll('#dq .chip').forEach(c=>c.classList.toggle('on',v===ymd(addD(new Date(),+c.dataset.n))));};
   dSync();$('eDate').onchange=dSync;$('eDate').oninput=dSync;
   sh.querySelectorAll('#dq .chip').forEach(c=>c.onclick=()=>{$('eDate').value=ymd(addD(new Date(),+c.dataset.n));dSync();});
-  const perVis=()=>{$('perWrap').style.display=(getT('eStart')||getT('eEnd'))?'none':'';};
+  const perVis=()=>{const st=getT('eStart'),en=getT('eEnd');$('perWrap').style.display=(st||en)?'none':'';$('eNext').textContent=(st&&en&&en<st)?'· 次日':'';};
   perVis();
   $('eClose').onclick=closeSheet;
   if($('tEditBtn'))$('tEditBtn').onclick=()=>{readForm();tplEdit=!tplEdit;tplSel=null;editSince=Date.now();drawEdit();};
@@ -622,7 +624,7 @@ function drawEdit(){
   if(!tplEdit)sh.querySelectorAll('.chip[data-t]').forEach(b=>b.onclick=()=>{
     const t=S.templates.find(x=>x.id===b.dataset.t);
     readForm();D.tpl=t.id;D.name=t.name;D.color=t.color;D.dur=t.dur||null;
-    if(D.start&&D.dur)D.end=fromMin(toMin(D.start)+D.dur);
+    if(D.start&&D.dur)D.end=wrapT(toMin(D.start)+D.dur);
     drawEdit();
   });
   else{bindTplEdit($('tplChips'));bindTplPanel();}
@@ -633,13 +635,14 @@ function drawEdit(){
     syncMin('eStart');
     const v=getT('eStart'),end=getT('eEnd');
     if(v){
-      if(D.dur)setT('eEnd',fromMin(toMin(v)+D.dur));
-      else if(prev&&end&&toMin(end)>toMin(prev))setT('eEnd',fromMin(toMin(v)+toMin(end)-toMin(prev)));
+      if(D.dur)setT('eEnd',wrapT(toMin(v)+D.dur));
+      else if(prev&&end){const d=(toMin(end)-toMin(prev)+1440)%1440;if(d)setT('eEnd',wrapT(toMin(v)+d));}
     }
     prev=v;perVis();
   };
   $('eStartH').onchange=onStart;$('eStartM').onchange=onStart;
   $('eEndH').onchange=()=>{syncMin('eEnd');perVis();};
+  $('eEndM').onchange=perVis;
   sh.querySelectorAll('.sw:not(#tpSw) span').forEach(s=>s.onclick=()=>{D.color=s.dataset.c||null;sh.querySelectorAll('.sw:not(#tpSw) span').forEach(x=>x.classList.toggle('on',x===s));});
   $('eSave').onclick=saveEdit;
   if($('eDel'))$('eDel').onclick=function(){
@@ -656,7 +659,7 @@ function saveEdit(){
   const err=m=>{$('eErr').textContent=m;};
   if(!D.name)return err('写一下要做什么');
   if(!D.date)return err('请选择日期');
-  if(D.start&&D.end&&toMin(D.end)<=toMin(D.start))return err('结束时间要晚于开始时间');
+  if(D.start&&D.end&&D.end===D.start)return err('结束时间不能和开始时间一样');
   if(D.start||D.end)D.period='';
   if(D.saveTpl&&!D.tpl){const ex=S.templates.find(x=>x.name===D.name);if(ex)D.tpl=ex.id;else{const t={id:uid(),name:D.name,color:D.color||autoColor(D.date,D.name,D.id),dur:(D.start&&D.end)?toMin(D.end)-toMin(D.start):null};S.templates.push(t);D.tpl=t.id;}}
   const old=S.events.find(x=>x.id===D.id);
@@ -960,8 +963,8 @@ ${text}
     const name=String(x.name).trim();
     const t=S.templates.find(t=>t.name&&t.name===name);
     let start=r15(x.start),end=r15(x.end);
-    if(start&&!end&&t&&t.dur)end=fromMin(toMin(start)+t.dur);
-    if(start&&end&&toMin(end)<=toMin(start))end='';
+    if(start&&!end&&t&&t.dur)end=wrapT(toMin(start)+t.dur);
+    if(start&&end&&end===start)end='';
     const period=(!start&&!end&&PER[x.period])?x.period:'';
     const it={name,date:x.date,start,end,period,note:String(x.note||'').trim(),tpl:t?t.id:null,color:t?t.color:autoColor(x.date,name,null,acc),on:true};
     acc.push({name:it.name,date:it.date,color:it.color});return it;
