@@ -92,7 +92,7 @@ main{flex:1;overflow:auto;position:relative;padding-bottom:calc(100px + env(safe
 .sh h3{flex:1;margin:0;font-size:18px;font-weight:600}
 .fr{margin-bottom:16px}
 .fl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px}
-input[type=text],input[type=date],select,textarea{width:100%;border:0;border-radius:10px;padding:11px 13px;font-size:16px;background:var(--soft);font-family:inherit;color:inherit;-webkit-appearance:none;appearance:none;min-height:44px;outline:none}
+input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{width:100%;border:0;border-radius:10px;padding:11px 13px;font-size:16px;background:var(--soft);font-family:inherit;color:inherit;-webkit-appearance:none;appearance:none;min-height:44px;outline:none}
 textarea{min-height:200px;resize:vertical;line-height:1.5}
 select{font-weight:600;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:24px}
 select:disabled{opacity:.4}
@@ -124,6 +124,13 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 .trow input{flex:1;min-width:0}
 .trow select{width:104px;flex:none}
 .x{border:0;background:none;color:#C4C4C4;font-size:22px;padding:4px 6px;cursor:pointer}
+.sbox{background:#fff;border-radius:12px;padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:22px}
+.sbox b{color:var(--text);font-weight:600}
+.sbtn{border:0;background:var(--bg);color:var(--text);font-size:13px;font-weight:600;border-radius:8px;padding:6px 11px;margin:8px 6px 0 0;cursor:pointer}
+.sec2{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 8px}
+.hrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:13px}
+.hrow span{flex:1}
+.hrow small{color:var(--muted)}
 .link{border:0;background:none;color:var(--text);font-size:14px;font-weight:600;padding:10px 0;cursor:pointer}
 .pv{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--soft);border-radius:10px;margin-bottom:6px}
 .pv input{width:18px;height:18px;accent-color:var(--text);flex:none}
@@ -138,7 +145,7 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
   <button class="ib txt" id="today">今天</button>
   <button class="ib" id="next" aria-label="下一页"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
   <button class="ib" id="impBtn" aria-label="粘贴行程"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg></button>
-  <button class="ib" id="tplBtn" aria-label="模板"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><path d="M16.5 13.5v6M13.5 16.5h6"/></svg></button>
+  <button class="ib" id="tplBtn" aria-label="设置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </header>
 <div class="seg" id="seg">
   <button data-v="month">月</button><button data-v="week">周</button><button data-v="day">日</button>
@@ -149,6 +156,7 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 <div class="mask" id="mask"></div>
 <div class="sheet" id="sheet"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
 const KEY='schedule-v2';
@@ -160,7 +168,11 @@ const DURS=[15,30,45,60,90,120,150,180,240];
 let S={templates:[],events:[]};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
 const OLDC={"#ffcb3f":"#ffe6a1","#ff6f40":"#ffabab","#ff3d6b":"#ff677d","#ff4c92":"#ff677d","#d23f94":"#a98be0","#a83fc4":"#a98be0","#4a2c60":"#a98be0","#2b2d6f":"#7fb2e5","#6093ca":"#7fb2e5","#3dc1d9":"#a6d4f2","#f7cd5b":"#ffe6a1","#ed784e":"#ffabab","#eb4f6d":"#ff677d","#ec5a91":"#ff677d","#c24b91":"#a98be0","#9c46be":"#a98be0","#462d5d":"#a98be0","#2b2d6b":"#7fb2e5","#6b92c5":"#7fb2e5","#66bed6":"#a6d4f2"};[...S.events,...S.templates].forEach(x=>{if(OLDC[x.color])x.color=OLDC[x.color];});
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const SUPA_URL='https://jqvguqqcvtassurhuqrs.supabase.co',SUPA_KEY='sb_publishable_VutfQkyu6XcxGAUT5fA_Eg_g5owXqQR';
+const T_BOARD='itinera_boards',T_HIST='itinera_history',SYNC_FLAG='itinera-synced-uid';
+let sb=null,sbUser=null,pushTimer=null,pushing=false,pushAgain=false,syncMsg='';
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){S.updatedAt=Date.now();saveLocal();if(sbUser){clearTimeout(pushTimer);pushTimer=setTimeout(push,800);syncSet('保存中…');}}
 
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
@@ -504,12 +516,15 @@ $('fab').onclick=()=>openEdit(null);
 function cleanTpl(){const n=S.templates.length;S.templates=S.templates.filter(t=>t.name);if(S.templates.length!==n)save();}
 function drawTpl(){
   openSheet(`
-  <div class="sh"><h3>常用活动</h3><button class="ib txt" id="tClose">完成</button></div>
-  <div class="hint" style="margin:-6px 0 16px">点圆点换颜色。设了时长的活动，选好开始时间会自动算出结束时间。</div>
+  <div class="sh"><h3>设置</h3><button class="ib txt" id="tClose">完成</button></div>
+  <div class="sec2">同步</div><div class="sbox" id="syncBox">${syncHTML()}</div>
+  <div class="sec2">常用活动</div>
+  <div class="hint" style="margin:0 0 14px">点圆点换颜色。设了时长的活动，选好开始时间会自动算出结束时间。</div>
   <div id="tList">${S.templates.map(t=>`<div class="trow" data-id="${t.id}"><span class="dot" style="background:${t.color}"></span><input type="text" value="${esc(t.name)}" placeholder="名称"><select><option value="">不设时长</option>${DURS.map(d=>`<option value="${d}" ${d===t.dur?'selected':''}>${durTxt(d)}</option>`).join('')}${t.dur&&!DURS.includes(t.dur)?`<option value="${t.dur}" selected>${durTxt(t.dur)}</option>`:''}</select><button class="x" aria-label="删除">×</button></div>`).join('')}</div>
   ${S.templates.length?'':'<div class="empty" style="padding:24px 0">还没有常用活动</div>'}
   <button class="link" id="tAdd">+ 添加</button>`);
   $('tClose').onclick=()=>{closeSheet();cleanTpl();render(true);};
+  bindSync();
   $('tAdd').onclick=()=>{
     S.templates=S.templates.filter(t=>t.name);
     S.templates.push({id:uid(),name:'',color:PAL[S.templates.length%PAL.length],dur:null});drawTpl();
@@ -685,6 +700,108 @@ function drawPreview(text){
 }
 $('impBtn').onclick=()=>drawImport('');
 
+
+
+/* ---------- cloud sync (Supabase) ---------- */
+const normalize=r=>({templates:Array.isArray(r.templates)?r.templates:[],events:Array.isArray(r.events)?r.events:[],last:r.last||{},updatedAt:r.updatedAt||0});
+const summ=d=>`${(d.events||[]).length} 个活动 · ${(d.templates||[]).length} 个常用`;
+const when=t=>{const d=new Date(t);return isNaN(d)?'':`${d.getMonth()+1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;};
+function syncHTML(){
+  if(!sb)return '数据保存在这台设备的浏览器里。';
+  if(!sbUser)return '现在只存在这台设备上。登录后可以多设备同步，账号和 deadline 清单是同一个。<br><button class="sbtn" data-g="login">登录 / 注册</button>';
+  return `<b>${esc(syncMsg||'已同步到云端')}</b> · ${esc(sbUser.email||'')}<br><button class="sbtn" data-g="history">历史版本</button><button class="sbtn" data-g="logout">退出登录</button>`;
+}
+function bindSync(){
+  const box=$('syncBox');if(!box)return;
+  box.onclick=async e=>{const b=e.target.closest('[data-g]');if(!b||!sb)return;
+    if(b.dataset.g==='login')drawAuth();
+    if(b.dataset.g==='history')drawHistory();
+    if(b.dataset.g==='logout'){await sb.auth.signOut();}
+  };
+}
+function syncSet(m){if(m!==undefined)syncMsg=m;const box=$('syncBox');if(box){box.innerHTML=syncHTML();}}
+async function push(){
+  if(!sbUser)return;if(pushing){pushAgain=true;return;}
+  pushing=true;
+  const {error}=await sb.from(T_BOARD).upsert({user_id:sbUser.id,data:S,updated_at:new Date().toISOString()});
+  pushing=false;
+  if(error)syncSet('同步失败（'+error.message+'），先存在本机');
+  else{try{localStorage.setItem(SYNC_FLAG,sbUser.id);}catch(e){}syncSet('已同步到云端');}
+  if(pushAgain){pushAgain=false;push();}
+}
+async function pull(first){
+  if(!sbUser||pushing)return;
+  const {data,error}=await sb.from(T_BOARD).select('data').eq('user_id',sbUser.id).maybeSingle();
+  if(error){syncSet('读取云端失败（'+error.message+'）');return;}
+  const remote=data&&data.data&&Array.isArray(data.data.events)?data.data:null;
+  let synced=false;try{synced=localStorage.getItem(SYNC_FLAG)===sbUser.id;}catch(e){}
+  const has=S.events.length||S.templates.length;
+  if(!remote){if(has)await push();else syncSet('已同步到云端');return;}
+  if(first&&!synced&&has&&JSON.stringify([remote.events,remote.templates])!==JSON.stringify([S.events,S.templates])){askWhich(remote);return;}
+  if((remote.updatedAt||0)>(S.updatedAt||0)){
+    if($('sheet').classList.contains('on')&&!$('syncBox'))return;
+    S=normalize(remote);saveLocal();render(true);
+  }else if((remote.updatedAt||0)<(S.updatedAt||0)){await push();return;}
+  try{localStorage.setItem(SYNC_FLAG,sbUser.id);}catch(e){}
+  syncSet('已同步到云端');
+}
+function askWhich(remote){
+  openSheet(`<div class="sh"><h3>用哪一份？</h3></div>
+  <div class="hint" style="margin:-6px 0 14px">这台设备上已经有内容，账号里也有。选一份来用，另一份会存进历史版本，不会丢。</div>
+  <button class="btn" id="wCloud" style="margin-bottom:8px">用账号里的（${summ(remote)}）</button>
+  <button class="btn" id="wLocal" style="background:#fff;color:var(--text)">用这台设备上的（${summ(S)}）</button>`);
+  $('wCloud').onclick=async()=>{closeSheet();await sb.from(T_HIST).insert({user_id:sbUser.id,data:S});S=normalize(remote);saveLocal();render(true);try{localStorage.setItem(SYNC_FLAG,sbUser.id);}catch(e){}syncSet('已同步到云端');};
+  $('wLocal').onclick=async()=>{closeSheet();await sb.from(T_HIST).insert({user_id:sbUser.id,data:remote});S.updatedAt=Date.now();saveLocal();push();};
+}
+function drawAuth(){
+  openSheet(`<div class="sh"><h3>登录</h3><button class="ib txt" id="aBack">返回</button></div>
+  <div class="hint" style="margin:-6px 0 14px">和 deadline 清单用同一个账号就行。第一次用的话点“注册”。</div>
+  <div class="fr"><input type="email" id="aEmail" placeholder="邮箱" autocomplete="email"></div>
+  <div class="fr"><input type="password" id="aPw" placeholder="密码（至少 6 位）" autocomplete="current-password"></div>
+  <div class="err" id="aMsg"></div>
+  <button class="btn" id="aIn">登录</button>
+  <button class="btn del" id="aUp" style="color:var(--text)">注册</button>`);
+  const msg=(t,bad)=>{$('aMsg').textContent=t;$('aMsg').style.color=bad?'var(--del)':'var(--muted)';};
+  const zh=m=>/invalid login/i.test(m)?'邮箱或密码不对':/already registered|already exists/i.test(m)?'这个邮箱已经注册过了，直接点登录':/password/i.test(m)&&/6/.test(m)?'密码至少 6 位':/email not confirmed/i.test(m)?'邮箱还没确认，去邮箱点确认链接':m;
+  const go=async kind=>{
+    const email=$('aEmail').value.trim(),password=$('aPw').value;
+    if(!email||!password)return msg('邮箱和密码都要填',true);
+    msg(kind==='up'?'注册中…':'登录中…');
+    const r=kind==='up'?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
+    if(r.error)return msg(zh(r.error.message),true);
+    if(kind==='up'&&!r.data.session)return msg('注册成功！去邮箱点确认链接，然后回来点“登录”。');
+    drawTpl();
+  };
+  $('aIn').onclick=()=>go('in');$('aUp').onclick=()=>go('up');
+  $('aPw').onkeydown=e=>{if(e.key==='Enter')go('in');};
+  $('aBack').onclick=drawTpl;
+}
+async function drawHistory(){
+  openSheet(`<div class="sh"><h3>历史版本</h3><button class="ib txt" id="hBack">返回</button></div><div id="hList"><div class="empty" style="padding:24px 0">加载中…</div></div>`);
+  $('hBack').onclick=drawTpl;
+  const {data,error}=await sb.from(T_HIST).select('id, created_at, data').order('id',{ascending:false}).limit(60);
+  const box=$('hList');if(!box)return;
+  if(error){box.innerHTML=`<div class="empty" style="padding:24px 0">读取失败：${esc(error.message)}</div>`;return;}
+  if(!data.length){box.innerHTML='<div class="empty" style="padding:24px 0">还没有历史版本。改动后过一阵会自动存。</div>';return;}
+  box.innerHTML=data.map(r=>`<div class="hrow"><span>${when(r.created_at)}<br><small>${summ(r.data)}</small></span><button class="sbtn" style="margin:0" data-h="${r.id}">恢复</button></div>`).join('');
+  box.onclick=async e=>{const b=e.target.closest('[data-h]');if(!b)return;
+    const row=data.find(r=>String(r.id)===b.dataset.h);if(!row)return;
+    b.textContent='恢复中…';
+    await sb.from(T_HIST).insert({user_id:sbUser.id,data:S});
+    S=normalize(row.data);save();closeSheet();render();
+  };
+}
+if(!(window.claude&&claude.use)&&window.supabase){
+  try{
+    sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+    sb.auth.onAuthStateChange((ev,session)=>{
+      const u=session?session.user:null,was=sbUser;sbUser=u;syncSet();
+      if(u&&(!was||was.id!==u.id))setTimeout(()=>pull(true),0);
+    });
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false);});
+    window.addEventListener('focus',()=>pull(false));
+  }catch(e){sb=null;}
+}
 
 render();
 setInterval(()=>{if(view==='week'&&!$('sheet').classList.contains('on'))render(true);},60000);
