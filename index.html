@@ -353,6 +353,12 @@ function renderDay(){
 /* row gestures */
 let suppress=false,openRow=null;
 function closeOpen(){if(openRow){const r=openRow;r.querySelector('.rc').style.transform='';r.querySelector('.rdel').style.width='';setTimeout(()=>r.classList.remove('sw'),300);openRow=null;}}
+// 点别处或滚动时收起已经滑开的那一行
+let blockTap=false;
+document.addEventListener('touchstart',e=>{if(openRow&&!openRow.contains(e.target)){closeOpen();blockTap=true;setTimeout(()=>blockTap=false,400);}},{capture:true,passive:true});
+document.addEventListener('click',e=>{if(blockTap){e.stopPropagation();e.preventDefault();blockTap=false;}},true);
+document.addEventListener('mousedown',e=>{if(openRow&&!openRow.contains(e.target)){closeOpen();blockTap=true;}},true);
+$('main').addEventListener('scroll',()=>{if(openRow)closeOpen();},{passive:true});
 let lastDel=null,toastT=0;
 function delEvent(id){
   const i=S.events.findIndex(e=>e.id===id);if(i<0)return;
@@ -375,17 +381,17 @@ function bindRows(){
       const t=ev.touches[0];x0=lx=t.clientX;y0=t.clientY;lt=performance.now();vx=0;mode='pending';
       base=openRow===row?-84:0;dx=base;W=row.offsetWidth;
       if(openRow&&openRow!==row)closeOpen();
-      if(isTodo)timer=setTimeout(()=>startDrag(t),420);
+      if(isTodo&&base===0)timer=setTimeout(()=>startDrag(t),420);
     },{passive:true});
     row.addEventListener('touchmove',ev=>{
       if(ev.touches.length>1||!mode)return;
       const t=ev.touches[0],mx=t.clientX-x0,my=t.clientY-y0;
       if(mode==='pending'){
-        if(Math.abs(mx)>6||Math.abs(my)>6){clearTimeout(timer);mode=(Math.abs(mx)>Math.abs(my)*1.2)?'swipe':'scroll';if(mode==='swipe'){rc.classList.add('nt');del.classList.add('nt');row.classList.add('sw');x0=t.clientX-(dx-base);}}
+        if(Math.abs(mx)>6||Math.abs(my)>6){clearTimeout(timer);mode=(Math.abs(mx)>Math.abs(my)*1.2)?'swipe':'scroll';if(mode==='swipe'){rc.classList.add('nt');del.classList.add('nt');row.classList.add('sw');}}
       }
       if(mode==='swipe'){
         ev.preventDefault();
-        const now=performance.now();if(now>lt){vx=0.7*vx+0.3*((t.clientX-lx)/(now-lt));}lx=t.clientX;lt=now;
+        const now=performance.now();if(now>lt){vx=0.4*vx+0.6*((t.clientX-lx)/(now-lt));}lx=t.clientX;lt=now;
         let raw=base+(t.clientX-x0);
         if(raw>0)raw=raw*0.25;
         dx=Math.max(raw,-W);
@@ -398,8 +404,9 @@ function bindRows(){
       if(mode==='swipe'){
         cancelAnimationFrame(raf);raf=0;
         rc.classList.remove('nt');del.classList.remove('nt');suppress=true;setTimeout(()=>suppress=false,80);
-        if(dx<-W*0.55||(vx<-1.1&&dx<-110)){fullDelete();}
-        else if(dx<-40||(vx<-0.35&&dx<-10)){dx=-84;paint();openRow=row;}
+        const goingRight=vx>0.12,goingLeft=vx<-0.12,keep=base<0?-66:-42;
+        if(!goingRight&&(dx<-W*0.55||(vx<-1.1&&dx<-110))){fullDelete();}
+        else if(goingLeft||(!goingRight&&dx<keep)){dx=-84;paint();openRow=row;}
         else{dx=0;paint();setTimeout(()=>{if(openRow!==row)row.classList.remove('sw');},300);if(openRow===row)openRow=null;}
       }else if(mode==='drag')endDrag();
       mode=null;
