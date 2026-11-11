@@ -785,10 +785,18 @@ function shrink(file){return new Promise((res,rej)=>{
     URL.revokeObjectURL(url);const d=c.toDataURL('image/jpeg',0.85);res({type:'image/jpeg',data:d.split(',')[1]});};
   img.onerror=()=>{URL.revokeObjectURL(url);rej();};img.src=url;});}
 async function askCloud(prompt,images){
-  const {data,error}=await sb.functions.invoke('itinera-ai',{body:{prompt,images}});
+  const {data,error}=await sb.functions.invoke('itinera-ai',{body:{prompt,images,max_tokens:16000}});
   if(error){let m=error.message;try{const b=await error.context.json();if(b&&b.error)m=b.error;}catch(e){}throw new Error(m);}
   if(data&&data.error)throw new Error(data.error);
-  const t=(data&&data.text)||'';const m=t.match(/\[[\s\S]*\]/);return JSON.parse(m?m[0]:t);
+  return parseLoose((data&&data.text)||'');
+}
+// 解析 AI 返回的 JSON；如果被截断，就保留前面完整的几项
+function parseLoose(t){
+  const i=t.indexOf('[');if(i<0)throw new Error('AI 没有返回日程');
+  let s=t.slice(i);const j=s.lastIndexOf(']');
+  try{return JSON.parse(j>0?s.slice(0,j+1):s);}catch(e){}
+  const k=s.lastIndexOf('}');if(k<0)throw new Error('AI 返回的内容不完整');
+  try{return JSON.parse(s.slice(0,k+1)+']');}catch(e){throw new Error('AI 返回的格式不对，再试一次');}
 }
 async function runImport(){
   const text=$('iText').value.trim(),err=m=>{$('iErr').textContent=m;};
@@ -811,7 +819,7 @@ async function runImport(){
 - start、end："HH:MM"（24 小时制），没写就填 ""。"下午3点"=15:00，"晚上7点半"=19:30，"7-8点"给 start 和 end，"9点前"只填 end
 - period：没有具体时间但写了上午/下午/晚上时，填 "am"/"pm"/"eve"，否则填 ""
 - note：其余有用信息（地点、人等），没有就填 ""
-不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。缩进在某一项下面的子项不要单独列出，把它们用“、”连起来放进上一项的 note。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。航班/火车：name 写成“航班号 出发地 → 到达地”，start/end 用起飞和到达时间；跨天到达时 end 留空，另加一项“航班号 抵达 某地”放在到达那天、end 填到达时间；航站楼、时长、预订号放 note。忽略订单详情、选座、送机广告等按钮文字。
+不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。缩进在某一项下面的子项不要单独列出，把它们用“、”连起来放进上一项的 note。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。表格形式的旅行攻略：每一行是一天，第一列的日期（如 12/24）就是这一天；“- ”开头的每一行是一个活动，“中午或下午”这类写成 period；不带“- ”的说明、红字提醒、网址放进相邻活动的 note；住宿另加一项“住宿：地名”放当天，period 填 eve；“STL-ABQ”这种机场代码是航班。输出紧凑的 JSON，不要缩进和换行。航班/火车：name 写成“航班号 出发地 → 到达地”，start/end 用起飞和到达时间；跨天到达时 end 留空，另加一项“航班号 抵达 某地”放在到达那天、end 填到达时间；航站楼、时长、预订号放 note。忽略订单详情、选座、送机广告等按钮文字。
 ${S.templates.length?`用户的常用活动：${S.templates.filter(t=>t.name).map(t=>t.name).join('、')}。意思一样时用这个名称。`:''}
 
 ${text?`原文：

@@ -21,7 +21,10 @@ Deno.serve(async (req) => {
     const allow = (Deno.env.get("ALLOWED_EMAILS") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
     if (allow.length && !allow.includes((user.email || "").toLowerCase())) return json({ error: "这个账号没有使用权限" }, 403);
 
-    const { prompt, images } = await req.json();
+    const { prompt, images, max_tokens, model } = await req.json();
+    const MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5"];
+    const useModel = MODELS.includes(model) ? model : "claude-haiku-5-5";
+    const maxTok = Math.min(Math.max(Number(max_tokens) || 16000, 1000), 32000);
     if (typeof prompt !== "string" || prompt.length > 40000) return json({ error: "内容太长了" }, 400);
     const imgs = Array.isArray(images) ? images.slice(0, 8) : [];
     const content = [
@@ -37,12 +40,12 @@ Deno.serve(async (req) => {
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
       },
-      body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 4000, messages: [{ role: "user", content }] }),
+      body: JSON.stringify({ model: useModel, max_tokens: maxTok, messages: [{ role: "user", content }] }),
     });
     const j = await r.json();
     if (!r.ok) return json({ error: j?.error?.message || "AI 请求失败" }, 502);
     const text = (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
-    return json({ text });
+    return json({ text, stop: j.stop_reason });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
