@@ -1,6 +1,5 @@
 // itinera-ai：把粘贴的文字 / 截图交给 Claude 整理成日程
 // 需要的 Secrets：ANTHROPIC_API_KEY（必填），ALLOWED_EMAILS（可选，逗号分隔，只允许这些邮箱使用）
-import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -13,10 +12,12 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: { user } } = await admin.auth.getUser(token);
-    if (!user) return json({ error: "请先登录" }, 401);
+    // 用登录用户自己的 token 去问 Supabase 这是谁
+    const auth = req.headers.get("Authorization") || "";
+    const apikey = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const ur = await fetch(Deno.env.get("SUPABASE_URL") + "/auth/v1/user", { headers: { apikey, Authorization: auth } });
+    const user = ur.ok ? await ur.json() : null;
+    if (!user || !user.id) return json({ error: "请先登录" }, 401);
     const allow = (Deno.env.get("ALLOWED_EMAILS") || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
     if (allow.length && !allow.includes((user.email || "").toLowerCase())) return json({ error: "这个账号没有使用权限" }, 403);
 
