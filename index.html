@@ -675,8 +675,47 @@ function localParse(text,today){
   return out;
 }
 
+function tripParse(text,today){
+  const pad=n=>String(n).padStart(2,'0');
+  const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const T0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const mkDate=(m,d)=>{const x=new Date(T0.getFullYear(),m-1,d);if(x<new Date(T0.getFullYear(),T0.getMonth()-2,1))x.setFullYear(x.getFullYear()+1);return ymd(x);};
+  const L=text.split(/\r?\n/).map(s=>s.replace(/[￼​]/g,'').trim()).filter(Boolean);
+  const reTime=/(?:^|[^0-9])([01]?\d|2[0-3])[:：]([0-5]\d)(?![0-9])/;
+  const reFl=/(?:航空|航班|Airlines?|Air)\s*([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})\b|^([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})$/;
+  const reTr=/(?:^|[^A-Za-z0-9])([GDCZTK]\d{1,4})(?:次)?(?![A-Za-z0-9])/;
+  const reDate=/(\d{1,2})\s*月\s*(\d{1,2})\s*日/;
+  const isCode=l=>{const f=l.match(reFl);if(f)return {kind:'plane',code:(f[1]||f[3])+(f[2]||f[4])};const t=/列车|高铁|动车|火车|车次/.test(l)||/^[GDCZTK]\d{1,4}次?$/.test(l)?l.match(reTr):null;return t?{kind:'train',code:t[1]}:null;};
+  const out=[];let date=ymd(T0),found=false;
+  for(let i=0;i<L.length;i++){
+    const l=L[i];
+    const c=isCode(l);
+    if(!c){const d=l.match(reDate);if(d&&!reTime.test(l))date=mkDate(+d[1],+d[2]);continue;}
+    found=true;
+    let j=i+1;const blk=[];
+    while(j<L.length&&j<i+18&&!isCode(L[j])&&!(reDate.test(L[j])&&/前往|出发|返回/.test(L[j]))&&!/^中转/.test(L[j])){blk.push(L[j]);j++;}
+    const ti=[];blk.forEach((s,k)=>{const m=s.match(reTime);if(m&&!/小?时\s*\d+\s*分/.test(s))ti.push({k,t:pad(+m[1])+':'+m[2],rest:s.replace(m[0],' ').trim()});});
+    const isJunk=s=>!s||reTime.test(s)||/小?时\s*\d*\s*分|^当地|已出票|出行人|预订号|订单|选座|行李|退改|经停|准点|值机|^\d+-\d+$/.test(s);
+    const place=(t)=>{if(!t)return '';if(t.rest&&!isJunk(t.rest))return t.rest;for(let k=t.k+1;k<blk.length&&k<t.k+4;k++){if(!isJunk(blk[k]))return blk[k];if(reTime.test(blk[k]))break;}return '';};
+    const dep=ti[0],arr=ti[1];
+    const dp=place(dep),ap=place(arr);
+    const dur=(blk.join(' ').match(/(\d+)\s*小?时\s*(\d+)\s*分/)||[]);
+    const ad=blk.join(' ').match(/当地\s*(\d{1,2})-(\d{1,2})/);
+    const bk=blk.join(' ').match(/预订号\s*([A-Z0-9]{5,8})/);
+    const short=s=>s.replace(/\.{2,}|…/g,'').replace(/\s*T\d\s*$/,'').replace(/国际航站楼|国际机场|机场|航站楼|站$/g,'').trim();
+    const arrDate=ad?mkDate(+ad[1],+ad[2]):'';
+    const st=dep?dep.t:'',en=arr&&!(arrDate&&arrDate!==date)&&arr.t>st?arr.t:'';
+    const note=[dp&&ap?`${dp.replace(/\.{2,}|…/g,'')} → ${ap}`:'',arrDate&&arrDate!==date&&arr?`到达 ${+ad[1]}/${+ad[2]} ${arr.t}`:'',dur[1]?`${dur[1]}小时${dur[2]}分`:'',bk?`预订号 ${bk[1]}`:''].filter(Boolean).join(' · ');
+    const name=c.code+(dp||ap?' '+[short(dp),short(ap)].filter(Boolean).join(' → '):'');
+    out.push({name,date,start:st,end:en,period:'',note});
+    if(arrDate&&arrDate!==date&&arr)out.push({name:c.code+' 抵达'+(ap?' '+short(ap):''),date:arrDate,start:'',end:arr.t,period:'',note:ap});
+    i=j-1;
+  }
+  return found?out:null;
+}
+
 const sampleP=(window.claude&&claude.use)?claude.use('sample').catch(()=>null):Promise.resolve(null);
-const r15=t=>{if(!/^\d{1,2}:\d{2}$/.test(t||''))return '';const m=Math.round(toMin(t)/15)*15;return fromMin(m);};
+const r15=t=>{if(!/^\d{1,2}:\d{2}$/.test(t||''))return '';const m=toMin(t);return m<1440?pad(Math.floor(m/60))+':'+pad(m%60):'';};
 
 let IMP=[];
 function drawImport(text){
@@ -710,7 +749,7 @@ async function runImport(){
 - start、end："HH:MM"（24 小时制），没写就填 ""。"下午3点"=15:00，"晚上7点半"=19:30，"7-8点"给 start 和 end，"9点前"只填 end
 - period：没有具体时间但写了上午/下午/晚上时，填 "am"/"pm"/"eve"，否则填 ""
 - note：其余有用信息（地点、人等），没有就填 ""
-不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。缩进在某一项下面的子项不要单独列出，把它们用“、”连起来放进上一项的 note。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。
+不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。缩进在某一项下面的子项不要单独列出，把它们用“、”连起来放进上一项的 note。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。航班/火车：name 写成“航班号 出发地 → 到达地”，start/end 用起飞和到达时间；跨天到达时 end 留空，另加一项“航班号 抵达 某地”放在到达那天、end 填到达时间；航站楼、时长、预订号放 note。忽略订单详情、选座、送机广告等按钮文字。
 ${S.templates.length?`用户的常用活动：${S.templates.filter(t=>t.name).map(t=>t.name).join('、')}。意思一样时用这个名称。`:''}
 
 原文：
@@ -718,7 +757,7 @@ ${S.templates.length?`用户的常用活动：${S.templates.filter(t=>t.name).ma
 ${text}
 """`;
   let out;
-  if(!sample){out=localParse(text,new Date());}
+  if(!sample){out=tripParse(text,new Date())||localParse(text,new Date());}
   else try{
     try{out=await sample.json(prompt,{modelTier:'default'});}
     catch(e){if(e&&(e.code==='not_granted'||e.code==='rate_limited'))throw e;const r=await sample(prompt,{modelTier:'default'});const m=r.text.match(/\[[\s\S]*\]/);out=JSON.parse(m?m[0]:r.text);}
