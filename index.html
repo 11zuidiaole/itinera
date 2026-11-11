@@ -773,7 +773,7 @@ const summ=d=>`${(d.events||[]).length} 个活动 · ${(d.templates||[]).length}
 const when=t=>{const d=new Date(t);return isNaN(d)?'':`${d.getMonth()+1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;};
 function syncHTML(){
   if(!sb)return '数据保存在这台设备的浏览器里。';
-  if(!sbUser)return '现在只存在这台设备上。登录后可以多设备同步，账号和 deadline 清单是同一个。<br><button class="sbtn" data-g="login">登录 / 注册</button>';
+  if(!sbUser)return '现在只存在这台设备上。登录后可以多设备同步，账号和 deadline catcher是同一个。<br><button class="sbtn" data-g="login">登录 / 注册</button>';
   return `<b>${esc(syncMsg||'已同步到云端')}</b> · ${esc(sbUser.email||'')}<br><button class="sbtn" data-g="history">历史版本</button><button class="sbtn" data-g="logout">退出登录</button>`;
 }
 function drawSettings(){
@@ -826,7 +826,7 @@ function askWhich(remote){
 }
 function drawAuth(){
   openSheet(`<div class="sh"><h3>登录</h3><button class="ib txt" id="aBack">返回</button></div>
-  <div class="hint" style="margin:-6px 0 14px">和 deadline 清单用同一个账号就行。第一次用的话点“注册”。</div>
+  <div class="hint" style="margin:-6px 0 14px">和 deadline catcher用同一个账号就行。第一次用的话点“注册”。</div>
   <div class="fr"><input type="email" id="aEmail" placeholder="邮箱" autocomplete="email"></div>
   <div class="fr"><input type="password" id="aPw" placeholder="密码（至少 6 位）" autocomplete="current-password"></div>
   <div class="err" id="aMsg"></div>
