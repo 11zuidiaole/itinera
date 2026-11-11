@@ -525,6 +525,78 @@ function drawTpl(){
 }
 $('tplBtn').onclick=drawTpl;
 /* import from memo */
+/* local memo parser */
+function localParse(text,today){
+  const pad=n=>String(n).padStart(2,'0');
+  const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const addD=(d,n)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x};
+  const T0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const NUM={'零':0,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+  const cn=s=>{if(/^\d+$/.test(s))return +s;if(s==='十')return 10;if(s[0]==='十')return 10+(NUM[s[1]]||0);
+    if(s.length===2&&s[1]==='十')return NUM[s[0]]*10;if(s.length===3&&s[1]==='十')return NUM[s[0]]*10+NUM[s[2]];return NUM[s];};
+  const WD={'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':7,'天':7,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7};
+  const P='(凌晨|早上|早晨|上午|中午|下午|傍晚|晚上|今晚|明晚|晚)';
+  const H='([0-9]{1,2}|[零一二两三四五六七八九十]{1,3})';
+  const M='(?:[:：]([0-9]{2})|点(?:(半)|(一刻)|(三刻)|([0-9]{1,2})分?)?|时)';
+  const Mopt='(?:[:：]([0-9]{2})|点(?:(半)|(一刻)|(三刻)|([0-9]{1,2})分?)?|时)?';
+  const reRange=new RegExp(P+'?\\s*'+H+Mopt+'\\s*[-~～到至—–]+\\s*'+P+'?\\s*'+H+M);
+  const reOne=new RegExp(P+'?\\s*'+H+M+'\\s*(之前|以前|前)?');
+  const rePer=new RegExp(P);
+  const mins=(mm,half,q1,q3,m2)=>mm?+mm:half?30:q1?15:q3?45:m2?+m2:0;
+  const to24=(h,p)=>{if(p){if(/下午|傍晚|晚/.test(p)&&h<12)h+=12;else if(p==='中午'&&h<6)h+=12;else if(p==='凌晨'&&h===12)h=0;}return h;};
+  const hm=(h,m)=>h>23||m>59?'':pad(h)+':'+pad(m);
+  const perOf=p=>!p?'':/上午|早|凌晨/.test(p)?'am':/中午|下午/.test(p)?'pm':'eve';
+  function fixYear(d){if(d<addD(T0,-60))d.setFullYear(d.getFullYear()+1);return d;}
+  function findDate(s){
+    let m,d=null,per='';
+    if((m=s.match(/(\d{1,2})\s*[月\/.]\s*(\d{1,2})\s*[日号]?(?![0-9点时:：])/))){d=fixYear(new Date(T0.getFullYear(),+m[1]-1,+m[2]));}
+    else if((m=s.match(/(大后天|后天|明天|今天|今晚|明晚|明早)/))){const k=m[1];d=addD(T0,k==='大后天'?3:k==='后天'?2:/明/.test(k)?1:0);if(/晚/.test(k))per='eve';if(k==='明早')per='am';}
+    else if((m=s.match(/(下下|下)?(?:周|星期|礼拜)([一二三四五六日天1-7])/))){
+      const w=WD[m[2]],ti=(T0.getDay()+6)%7+1;
+      if(m[1]){const mon=addD(T0,-(ti-1)+7*(m[1]==='下下'?2:1));d=addD(mon,w-1);}else d=addD(T0,(w-ti+7)%7);
+    }
+    else if((m=s.match(/(?:^|[^0-9])(\d{1,2})\s*[日号](?![0-9])/))){d=new Date(T0.getFullYear(),T0.getMonth(),+m[1]);if(d<T0)d.setMonth(d.getMonth()+1);m=[m[0].replace(/^[^0-9]/,'')];}
+    if(!d)return null;
+    return {date:ymd(d),per,rest:s.replace(m[0],' ')};
+  }
+  function findTime(s){
+    let m;
+    if((m=s.match(reRange))){
+      const p1=m[1],p2=m[8]||p1;let h1=cn(m[2]),h2=cn(m[9]);
+      if(h1==null||h2==null)return null;
+      h1=to24(h1,p1);h2=to24(h2,p2);
+      let st=hm(h1,mins(m[3],m[4],m[5],m[6],m[7])),en=hm(h2,mins(m[10],m[11],m[12],m[13],m[14]));
+      if(st&&en&&en<=st&&h2<12)en=hm(h2+12,mins(m[10],m[11],m[12],m[13],m[14]));
+      if(st&&en&&en<=st)en='';
+      return {start:st,end:en,rest:s.replace(m[0],' ')};
+    }
+    if((m=s.match(reOne))){
+      let h=cn(m[2]);if(h==null)return null;h=to24(h,m[1]);
+      const t=hm(h,mins(m[3],m[4],m[5],m[6],m[7]));if(!t)return null;
+      return m[8]?{start:'',end:t,rest:s.replace(m[0],' ')}:{start:t,end:'',rest:s.replace(m[0],' ')};
+    }
+    return null;
+  }
+  const clean=s=>s.replace(/[，,；;、：:\s]+/g,' ').replace(/^[\s\-–—•·*~]+|[\s\-–—•·*~]+$/g,'').trim();
+  const out=[];let carry=ymd(T0);
+  for(let line of text.split(/\n+/)){
+    line=line.replace(/^\s*(?:\d{1,2}[.、)）](?!\d)|[-•·*●○◦▪︎☐☑✅]|\[[ xX]?\])\s*/,'');
+    if(!line.trim())continue;
+    const segs=line.split(/[，,；;]/);let pend=null;
+    for(let seg of segs){
+      let date=null,per='',t=null;
+      const d=findDate(seg);if(d){carry=d.date;per=d.per;seg=d.rest;}
+      t=findTime(seg);if(t)seg=t.rest;
+      const pm=seg.match(rePer);if(pm){if(!t)per=perOf(pm[1]);seg=seg.replace(pm[0],' ');}
+      const name=clean(seg);
+      if(!name){if(t||per)pend={t,per};continue;}
+      if(!t&&pend){t=pend.t;per=per||pend.per;pend=null;}
+      out.push({name,date:carry,start:t?t.start:'',end:t?t.end:'',period:t&&(t.start||t.end)?'':per,note:''});
+    }
+  }
+  return out;
+}
+
 const sampleP=(window.claude&&claude.use)?claude.use('sample').catch(()=>null):Promise.resolve(null);
 const r15=t=>{if(!/^\d{1,2}:\d{2}$/.test(t||''))return '';const m=Math.round(toMin(t)/15)*15;return fromMin(m);};
 const hashColor=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return PAL[h%(PAL.length-1)];};
@@ -542,9 +614,8 @@ function drawImport(text){
 async function runImport(){
   const text=$('iText').value.trim(),err=m=>{$('iErr').textContent=m;};
   if(!text)return err('先粘贴内容');
-  const sample=await sampleP;
-  if(!sample)return err('这个功能要在 Claude 里打开网页才能用');
   const b=$('iGo');b.disabled=true;b.textContent='整理中…';err('');
+  const sample=(window.claude&&claude.use)?await Promise.race([sampleP,new Promise(r=>setTimeout(()=>r(null),1500))]):null;
   const now=new Date(),days=[];
   for(let i=0;i<14;i++){const d=addD(now,i);days.push(ymd(d)+' '+wdName(d));}
   const prompt=`你是日程整理助手。把用户从手机备忘录粘贴的行程整理成 JSON 数组，只输出 JSON 数组，不要其他文字。
@@ -569,7 +640,8 @@ ${S.templates.length?`用户的常用活动：${S.templates.filter(t=>t.name).ma
 ${text}
 """`;
   let out;
-  try{
+  if(!sample){out=localParse(text,new Date());}
+  else try{
     try{out=await sample.json(prompt,{modelTier:'default'});}
     catch(e){if(e&&(e.code==='not_granted'||e.code==='rate_limited'))throw e;const r=await sample(prompt,{modelTier:'default'});const m=r.text.match(/\[[\s\S]*\]/);out=JSON.parse(m?m[0]:r.text);}
   }catch(e){
@@ -612,7 +684,6 @@ function drawPreview(text){
   };
 }
 $('impBtn').onclick=()=>drawImport('');
-if(!(window.claude&&claude.use))$('impBtn').style.display='none';else sampleP.then(x=>{if(!x)$('impBtn').style.display='none';});
 
 
 render();
