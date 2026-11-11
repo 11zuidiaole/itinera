@@ -204,6 +204,7 @@ const TI={
  plane:'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z',
  train:'M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h2.23l2-2H14l2 2h2v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-7H6V6h5v4zm2 0V6h5v4h-5zm3.5 7c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
  car:'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
+ hotel:'M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z',
  taxi:'M18.92 6.01C18.72 5.42 18.16 5 17.5 5H15V3H9v2H6.5c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z'
 };
 const RE_TRAIN=/(?:^|[^A-Za-z0-9])([GDCZTK]\d{1,4})(?![A-Za-z0-9])/;
@@ -215,6 +216,7 @@ function transport(e){
   if(/飞机|航班|登机|起飞|落地|flight/i.test(txt)||/^飞/.test(e.name))return {t:'plane',c:fl?fl[1].replace(/\s/,''):''};
   if(/打车|出租|滴滴|uber|lyft|taxi/i.test(txt))return {t:'taxi',c:''};
   if(/开车|自驾|驾车/.test(txt))return {t:'car',c:''};
+  if(/入住|退房|酒店|宾馆|民宿|hotel/i.test(e.name))return {t:'hotel',c:''};
   const t2=txt.match(/(?:^|[^A-Za-z0-9])([GD]\d{2,4})(?![A-Za-z0-9])/);if(t2)return {t:'train',c:t2[1]};
   const f2=txt.match(/(?:^|[^A-Za-z0-9])([A-Z]{2}\s?\d{3,4}|\d[A-Z]\s?\d{3,4}|[A-Z]\d\s?\d{3,4})(?![0-9])/);if(f2)return {t:'plane',c:f2[1].replace(/\s/,'')};
   return null;
@@ -682,13 +684,27 @@ function tripParse(text,today){
   const mkDate=(m,d)=>{const x=new Date(T0.getFullYear(),m-1,d);if(x<new Date(T0.getFullYear(),T0.getMonth()-2,1))x.setFullYear(x.getFullYear()+1);return ymd(x);};
   const L=text.split(/\r?\n/).map(s=>s.replace(/[￼​]/g,'').trim()).filter(Boolean);
   const reTime=/(?:^|[^0-9])([01]?\d|2[0-3])[:：]([0-5]\d)(?![0-9])/;
-  const reFl=/(?:航空|航班|Airlines?|Air)\s*([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})\b|^([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})$/;
+  const reFl=/(?:航空|航班|航|Airlines?|Airways|Air)\s*([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})\b|^([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})$/;
   const reTr=/(?:^|[^A-Za-z0-9])([GDCZTK]\d{1,4})(?:次)?(?![A-Za-z0-9])/;
   const reDate=/(\d{1,2})\s*月\s*(\d{1,2})\s*日/;
   const isCode=l=>{const f=l.match(reFl);if(f)return {kind:'plane',code:(f[1]||f[3])+(f[2]||f[4])};const t=/列车|高铁|动车|火车|车次/.test(l)||/^[GDCZTK]\d{1,4}次?$/.test(l)?l.match(reTr):null;return t?{kind:'train',code:t[1]}:null;};
   const out=[];let date=ymd(T0),found=false;
   for(let i=0;i<L.length;i++){
     const l=L[i];
+    const ci=l.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*入住/);
+    if(ci){
+      found=true;
+      const win=L.slice(i,i+5).join(' ');
+      const co=win.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*离店/),nt=win.match(/(\d+)\s*晚/);
+      let hotel='';for(let k=i-1;k>=Math.max(0,i-4);k--){const x=L[k].replace(/[>›〉]+\s*$/,'').trim();if(x&&!/^酒店$|预订成功|已确认|待入住|订单|^当地|^\d{1,2}\s*月\s*\d{1,2}\s*日/.test(x)){hotel=x;break;}}
+      let room='';for(let k=i;k<Math.min(L.length,i+5);k++){if(/房|间/.test(L[k])&&!/入住|离店/.test(L[k])){room=L[k];break;}}
+      const cid=mkDate(+ci[1],+ci[2]),cod=co?mkDate(+co[1],+co[2]):'';
+      const hn=hotel||'酒店';
+      out.push({name:'入住 '+hn,date:cid,start:'',end:'',period:'',note:[`${+ci[1]}/${+ci[2]}${co?'–'+(+co[1])+'/'+(+co[2]):''}`,nt?nt[1]+'晚':'',room].filter(Boolean).join(' · ')});
+      if(cod)out.push({name:'退房 '+hn,date:cod,start:'',end:'',period:'',note:''});
+      let j=i+1;while(j<L.length&&j<i+5&&!isCode(L[j])&&!/前往/.test(L[j]))j++;
+      i=j-1;continue;
+    }
     const c=isCode(l);
     if(!c){const d=l.match(reDate);if(d&&!reTime.test(l))date=mkDate(+d[1],+d[2]);continue;}
     found=true;
