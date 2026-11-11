@@ -643,8 +643,9 @@ function localParse(text,today){
     else if(/午饭|午餐|中饭|中午饭/.test(txt)){t.start=sh(t.start,h=>h<=5);t.end=sh(t.end,h=>h<=5);}
   }
   const applyPer=(t,p)=>{const f=v=>{if(!v)return v;const h=+v.slice(0,2);return pad(to24(h,p))+v.slice(2);};t.start=f(t.start);t.end=f(t.end);if(t.start&&t.end&&t.end<=t.start)t.end='';};
-  const out=[];let carry=ymd(T0),carryPer='';
+  const out=[];let carry=ymd(T0),carryPer='',parent=null;
   for(let line of text.split(/\r?\n+/)){
+    const ind=(line.match(/^[ \t\u00A0\u3000]*/)[0]).replace(/\t/g,'    ').length;
     line=line.replace(/[￼​﻿]/g,'').replace(/【\s*[xX✓✔]?\s*】|\[\s*[xX✓✔]?\s*\]/g,' ');
     line=line.replace(/^\s*(?:\d{1,2}[.、)）](?!\d)|[-–—•·*●○◦◯⚪︎▪︎▫︎■□☐☑☒✅✓✔]+)\s*/,'');
     line=line.replace(/^#+\s*/,'');
@@ -653,8 +654,9 @@ function localParse(text,today){
     const lp=line.match(rePer),lineDate=findDate(line);
     // header line: only a date and/or a period word (e.g. "11月15日", "晚上：")
     const bare=clean((lineDate?lineDate.rest:line).replace(rePer,' '));
-    if(!bare&&!findTime(line)){if(lineDate){carry=lineDate.date;carryPer=lineDate.per?(lineDate.per==='eve'?'晚上':'上午'):'';}if(lp)carryPer=lp[1];continue;}
+    if(!bare&&!findTime(line)){parent=null;if(lineDate){carry=lineDate.date;carryPer=lineDate.per?(lineDate.per==='eve'?'晚上':'上午'):'';}if(lp)carryPer=lp[1];continue;}
     if(lineDate&&!lp)carryPer='';
+    if(parent&&ind>parent.ind&&!lineDate&&!findTime(line)){const sub=clean(line);if(sub){parent.it.note=parent.it.note?parent.it.note+'、'+sub:sub;}continue;}
     const hp=line.match(new RegExp('^\\s*'+P+'\\s*[:：]'));if(hp)carryPer=hp[1];
     for(let seg of segs){
       let per='',t=null;
@@ -667,7 +669,7 @@ function localParse(text,today){
       const name=clean(seg);
       if(!name){if(t||per)pend={t,per};continue;}
       if(!t&&pend){t=pend.t;per=per||pend.per;pend=null;}
-      out.push({name,date:carry,start:t?t.start:'',end:t?t.end:'',period:t&&(t.start||t.end)?'':per,note:''});
+      const it={name,date:carry,start:t?t.start:'',end:t?t.end:'',period:t&&(t.start||t.end)?'':per,note:''};out.push(it);if(segs.length===1)parent={ind,it};
     }
   }
   return out;
@@ -708,7 +710,7 @@ async function runImport(){
 - start、end："HH:MM"（24 小时制），没写就填 ""。"下午3点"=15:00，"晚上7点半"=19:30，"7-8点"给 start 和 end，"9点前"只填 end
 - period：没有具体时间但写了上午/下午/晚上时，填 "am"/"pm"/"eve"，否则填 ""
 - note：其余有用信息（地点、人等），没有就填 ""
-不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。
+不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。缩进在某一项下面的子项不要单独列出，把它们用“、”连起来放进上一项的 note。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。
 ${S.templates.length?`用户的常用活动：${S.templates.filter(t=>t.name).map(t=>t.name).join('、')}。意思一样时用这个名称。`:''}
 
 原文：
