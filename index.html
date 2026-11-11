@@ -451,6 +451,31 @@ $('main').addEventListener('touchend',e=>{
 function openSheet(html){$('sheet').innerHTML='<div class="grab"></div>'+html;$('mask').classList.add('on');$('sheet').classList.add('on');}
 function closeSheet(){$('mask').classList.remove('on');$('sheet').classList.remove('on');}
 $('mask').onclick=()=>{closeSheet();cleanTpl();render(true);};
+/* swipe the sheet down to close */
+(function(){
+  const sh=$('sheet');let y0=null,dy=0,t0=0,drag=false;
+  sh.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1)return;
+    const el=e.target;
+    if(el.closest('textarea')&&el.closest('textarea').scrollTop>0)return;
+    y0=e.touches[0].clientY;dy=0;t0=Date.now();drag=false;
+  },{passive:true});
+  sh.addEventListener('touchmove',e=>{
+    if(y0===null)return;
+    const d=e.touches[0].clientY-y0;
+    if(!drag){if(d>6&&sh.scrollTop<=0){drag=true;sh.style.transition='none';}else if(d<-6||sh.scrollTop>0){y0=null;return;}}
+    if(drag){e.preventDefault();dy=Math.max(0,d);sh.style.transform=`translateY(${dy}px)`;}
+  },{passive:false});
+  const end=()=>{
+    if(y0===null)return;y0=null;
+    if(!drag)return;drag=false;
+    sh.style.transition='';
+    const fast=dy>40&&dy/(Date.now()-t0)>0.5;
+    sh.style.transform='';
+    if(dy>110||fast){if(document.activeElement)document.activeElement.blur();closeSheet();cleanTpl();render(true);}
+  };
+  sh.addEventListener('touchend',end);sh.addEventListener('touchcancel',end);
+})();
 
 function tpHTML(id,v){
   const [h,m]=v?v.split(':'):['','00'];
