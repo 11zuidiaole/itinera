@@ -217,7 +217,7 @@ function transport(e){
   if(/飞机|航班|登机|起飞|落地|flight/i.test(txt)||/^飞/.test(e.name))return {t:'plane',c:fl?fl[1].replace(/\s/,''):''};
   if(/打车|出租|滴滴|uber|lyft|taxi/i.test(txt))return {t:'taxi',c:''};
   if(/开车|自驾|驾车/.test(txt))return {t:'car',c:''};
-  if(/入住|退房|酒店|宾馆|民宿|hotel/i.test(e.name))return {t:'hotel',c:''};
+  if(/入住|退房|住宿|酒店|宾馆|民宿|hotel/i.test(e.name))return {t:'hotel',c:''};
   const t2=txt.match(/(?:^|[^A-Za-z0-9])([GD]\d{2,4})(?![A-Za-z0-9])/);if(t2)return {t:'train',c:t2[1]};
   const f2=txt.match(/(?:^|[^A-Za-z0-9])([A-Z]{2}\s?\d{3,4}|\d[A-Z]\s?\d{3,4}|[A-Z]\d\s?\d{3,4})(?![0-9])/);if(f2)return {t:'plane',c:f2[1].replace(/\s/,'')};
   return null;
