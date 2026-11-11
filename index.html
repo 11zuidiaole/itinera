@@ -790,7 +790,7 @@ async function askCloud(prompt,images){
   if(data&&data.error)throw new Error(data.error);
   const txt=(data&&data.text)||'';
   try{return parseLoose(txt);}
-  catch(e){throw new Error(e.message+(data&&data.stop?'（'+data.stop+'）':'')+(txt?'：'+txt.replace(/\s+/g,' ').slice(0,120):'：返回为空'));}
+  catch(e){throw new Error(e.message+(data&&data.stop?'（'+data.stop+'）':'')+(txt?'：'+txt.replace(/\s+/g,' ').slice(0,120):'：返回为空 '+(typeof data==='string'?data:JSON.stringify(data)||'').slice(0,150)));}
 }
 // 解析 AI 返回的 JSON；如果被截断，就保留前面完整的几项
 function parseLoose(t){
