@@ -53,7 +53,7 @@ main{flex:1;overflow:auto;position:relative;padding-bottom:calc(100px + env(safe
 .wtodo{display:grid;grid-template-columns:34px repeat(7,1fr);border-bottom:1px solid var(--line);padding-bottom:6px;min-height:28px}
 .wtodo .lb{font-size:9px;font-weight:600;color:var(--muted);text-align:right;padding:4px 5px 0 0;line-height:1.2}
 .wtodo .dc{padding:0 1px;min-width:0;cursor:pointer}
-.wbody{display:grid;grid-template-columns:34px repeat(7,1fr)}
+.wbody{display:grid;grid-template-columns:34px repeat(7,1fr);padding-top:8px}
 .hrs div{height:calc(var(--H)*3);font-size:9px;font-weight:600;color:#BDBDBD;text-align:right;padding-right:5px;position:relative;top:-6px}
 .col{position:relative;height:calc(var(--H)*18);background:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent calc(var(--H)*3));cursor:pointer}
 .ev{position:absolute;border-radius:5px;font-size:10px;font-weight:600;padding:3px;overflow:hidden;line-height:1.25;cursor:pointer;border:1px solid var(--bg)}
@@ -232,7 +232,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const durTxt=d=>d<60?d+'分钟':(d%60?(d/60).toFixed(1):d/60)+'小时';
 const PIN=s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="currentColor" d="M14.5 2.5l7 7-2.2.6-3.6 3.6.6 4.8-1.8 1.8-4-4-5.3 5.3-1.4-1.4 5.3-5.3-4-4 1.8-1.8 4.8.6 3.6-3.6z"/></svg>`;
 const timed=e=>!!(e.start||e.end);
-const sortKey=e=>e.start||e.end||PERK[e.period]||'99';
+const sortKey=e=>e._cont?'00:00':(e.start||e.end||PERK[e.period]||'99');
 
 const TI={
  plane:'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z',
@@ -260,20 +260,26 @@ const codeOf=e=>{const x=transport(e);return x&&x.c?x.c:''};
 const cm=t=>t.endsWith(':00')?String(+t.slice(0,2)):t.replace(/^0/,'');
 const nextDay=e=>!!(e.start&&e.end&&e.end<=e.start);
 const wrapT=m=>{m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60);};
-function tCompact(e){if(e.start&&e.end)return cm(e.start)+'-'+(nextDay(e)?'次日':'')+cm(e.end);if(e.start)return cm(e.start)+'~';if(e.end)return '~'+cm(e.end);return '';}
-function tShort(e){if(e.start&&e.end)return e.start+'-'+(nextDay(e)?'次日 ':'')+e.end;if(e.start)return e.start+'~';if(e.end)return '~'+e.end;return '';}
+function tCompact(e){if(e._cont)return '~'+cm(e.end);if(e.start&&e.end)return cm(e.start)+'-'+(nextDay(e)?'次日':'')+cm(e.end);if(e.start)return cm(e.start)+'~';if(e.end)return '~'+cm(e.end);return '';}
+function tShort(e){if(e._cont)return '前一天 '+e._from+' - '+e.end;if(e.start&&e.end)return e.start+'-'+(nextDay(e)?'次日 ':'')+e.end;if(e.start)return e.start+'~';if(e.end)return '~'+e.end;return '';}
 function timeText(e){
   const tt=tShort(e);if(tt)return tt;
   return PER[e.period]||'';
 }
-const H=34,H0=6;
+const H=34;let H0=6;
 
 let view='month',cur=new Date();
 const todayStr=()=>ymd(new Date());
 const evsOn=ds=>S.events.filter(e=>e.date===ds);
 const byTime=(a,b)=>sortKey(a).localeCompare(sortKey(b))||(a.order||0)-(b.order||0);
 const rank=e=>e.pinned?0:(transport(e)||{}).t==='plane'?1:timed(e)?2:3;
-const displaySort=ds=>evsOn(ds).sort((a,b)=>rank(a)-rank(b)||byTime(a,b));
+// 某一天要显示的活动：当天的 + 前一天跨到今天的（只显示到结束的那一刻）
+function evsShow(ds){
+  const prev=ymd(addD(parse(ds),-1));
+  const cont=S.events.filter(e=>e.date===prev&&nextDay(e)&&e.end>'00:00').map(e=>({...e,_cont:true,_from:e.start,start:'',end:e.end}));
+  return evsOn(ds).concat(cont);
+}
+const displaySort=ds=>evsShow(ds).sort((a,b)=>rank(a)-rank(b)||byTime(a,b));
 const tagHTML=e=>`<div class="tag" style="background:${e.color};color:${fg(e.color)}">${e.pinned?PIN(8):''}${ticon(e,10)}${esc(e.name)}</div>`;
 
 function render(keep){
@@ -323,19 +329,24 @@ function renderWeek(){
   for(let i=0;i<7;i++){const d=addD(ws,i);h+=`<div data-d="${ymd(d)}" class="${ymd(d)===td?'today':''}">${'一二三四五六日'[i]}<b>${d.getDate()}</b></div>`;}
   h+='</div><div class="wtodo"><div class="lb">待定</div>';
   for(let i=0;i<7;i++){
-    const ds=ymd(addD(ws,i)),u=evsOn(ds).filter(e=>!timed(e)).sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||byTime(a,b));
+    const ds=ymd(addD(ws,i)),u=evsShow(ds).filter(e=>!timed(e)).sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||byTime(a,b));
     const show=u.length>3?u.slice(0,2):u;
     h+=`<div class="dc" data-d="${ds}">${show.map(e=>tagHTML(e)).join('')}${u.length>3?`<div class="more">+${u.length-2}</div>`:''}</div>`;
   }
+  // 有凌晨的活动时，时间轴从更早开始
+  let minS=360;
+  for(let i=0;i<7;i++)evsShow(ymd(addD(ws,i))).forEach(e=>{if(e._cont)minS=0;else if(e.start)minS=Math.min(minS,toMin(e.start));else if(e.end)minS=Math.min(minS,toMin(e.end)-45);});
+  H0=Math.max(0,Math.min(6,Math.floor(minS/180)*3));
   h+='</div></div><div class="wbody"><div class="hrs">';
   for(let i=H0;i<24;i+=3)h+=`<div>${i}:00</div>`;
   h+='</div>';
   const now=new Date();
   for(let i=0;i<7;i++){
     const ds=ymd(addD(ws,i));
-    h+=`<div class="col" data-d="${ds}">`;
-    const items=evsOn(ds).filter(timed).map(e=>{
+    h+=`<div class="col" data-d="${ds}" style="height:${(24-H0)*H}px">`;
+    const items=evsShow(ds).filter(timed).map(e=>{
       let s,en,k='';
+      if(e._cont){s=0;en=Math.max(toMin(e.end),20);return {e,s,en,k};}
       if(e.start&&e.end){s=toMin(e.start);en=nextDay(e)?1440:Math.max(toMin(e.end),s+30);}
       else if(e.start){s=toMin(e.start);en=s+45;k='open';}
       else{en=toMin(e.end);s=en-45;k='endonly';}
@@ -366,7 +377,7 @@ function rowHTML(e){
 function renderDay(){
   const ds=ymd(cur);
   $('title').textContent=`${cur.getMonth()+1}月${cur.getDate()}日 ${wdName(cur)}`;
-  const all=evsOn(ds);
+  const all=evsShow(ds);
   const todo=all.filter(e=>!timed(e)).sort((a,b)=>(a.order||0)-(b.order||0));
   const tl=all.filter(timed).sort(byTime);
   let h='<div class="dlist">';
