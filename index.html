@@ -17,9 +17,9 @@
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif}
 body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);max-width:760px;margin:0 auto}
 button{font-family:inherit}
-header{padding:20px 10px 10px 20px;display:flex;align-items:center}
+header{padding:20px 8px 10px 18px;display:flex;align-items:center}
 #title{font-size:26px;font-weight:600;flex:1;white-space:nowrap}
-.ib{border:0;background:none;padding:8px;border-radius:8px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center}
+.ib{border:0;background:none;padding:7px 6px;border-radius:8px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center}
 .ib.txt{padding:6px 10px;background:var(--soft)}
 .ib:active{background:var(--soft)}
 .seg{display:flex;gap:4px;margin:0 20px 12px;background:var(--soft);border-radius:10px;padding:3px;width:max-content}
@@ -145,7 +145,8 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
   <button class="ib txt" id="today">今天</button>
   <button class="ib" id="next" aria-label="下一页"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
   <button class="ib" id="impBtn" aria-label="粘贴行程"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg></button>
-  <button class="ib" id="tplBtn" aria-label="设置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  <button class="ib" id="tplBtn" aria-label="常用活动"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><path d="M16.5 13.5v6M13.5 16.5h6"/></svg></button>
+  <button class="ib" id="setBtn" aria-label="设置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </header>
 <div class="seg" id="seg">
   <button data-v="month">月</button><button data-v="week">周</button><button data-v="day">日</button>
@@ -516,15 +517,12 @@ $('fab').onclick=()=>openEdit(null);
 function cleanTpl(){const n=S.templates.length;S.templates=S.templates.filter(t=>t.name);if(S.templates.length!==n)save();}
 function drawTpl(){
   openSheet(`
-  <div class="sh"><h3>设置</h3><button class="ib txt" id="tClose">完成</button></div>
-  <div class="sec2">同步</div><div class="sbox" id="syncBox">${syncHTML()}</div>
-  <div class="sec2">常用活动</div>
-  <div class="hint" style="margin:0 0 14px">点圆点换颜色。设了时长的活动，选好开始时间会自动算出结束时间。</div>
+  <div class="sh"><h3>常用活动</h3><button class="ib txt" id="tClose">完成</button></div>
+  <div class="hint" style="margin:-6px 0 16px">点圆点换颜色。设了时长的活动，选好开始时间会自动算出结束时间。</div>
   <div id="tList">${S.templates.map(t=>`<div class="trow" data-id="${t.id}"><span class="dot" style="background:${t.color}"></span><input type="text" value="${esc(t.name)}" placeholder="名称"><select><option value="">不设时长</option>${DURS.map(d=>`<option value="${d}" ${d===t.dur?'selected':''}>${durTxt(d)}</option>`).join('')}${t.dur&&!DURS.includes(t.dur)?`<option value="${t.dur}" selected>${durTxt(t.dur)}</option>`:''}</select><button class="x" aria-label="删除">×</button></div>`).join('')}</div>
   ${S.templates.length?'':'<div class="empty" style="padding:24px 0">还没有常用活动</div>'}
   <button class="link" id="tAdd">+ 添加常用活动</button>`);
   $('tClose').onclick=()=>{closeSheet();cleanTpl();render(true);};
-  bindSync();
   $('tAdd').onclick=()=>{
     S.templates=S.templates.filter(t=>t.name);
     S.templates.push({id:uid(),name:'',color:PAL[S.templates.length%PAL.length],dur:null});drawTpl();
@@ -711,6 +709,12 @@ function syncHTML(){
   if(!sbUser)return '现在只存在这台设备上。登录后可以多设备同步，账号和 deadline 清单是同一个。<br><button class="sbtn" data-g="login">登录 / 注册</button>';
   return `<b>${esc(syncMsg||'已同步到云端')}</b> · ${esc(sbUser.email||'')}<br><button class="sbtn" data-g="history">历史版本</button><button class="sbtn" data-g="logout">退出登录</button>`;
 }
+function drawSettings(){
+  openSheet(`<div class="sh"><h3>设置</h3><button class="ib txt" id="sClose">完成</button></div>
+  <div class="sec2">同步</div><div class="sbox" id="syncBox">${syncHTML()}</div>`);
+  $('sClose').onclick=closeSheet;bindSync();
+}
+$('setBtn').onclick=drawSettings;
 function bindSync(){
   const box=$('syncBox');if(!box)return;
   box.onclick=async e=>{const b=e.target.closest('[data-g]');if(!b||!sb)return;
@@ -770,15 +774,15 @@ function drawAuth(){
     const r=kind==='up'?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});
     if(r.error)return msg(zh(r.error.message),true);
     if(kind==='up'&&!r.data.session)return msg('注册成功！去邮箱点确认链接，然后回来点“登录”。');
-    drawTpl();
+    drawSettings();
   };
   $('aIn').onclick=()=>go('in');$('aUp').onclick=()=>go('up');
   $('aPw').onkeydown=e=>{if(e.key==='Enter')go('in');};
-  $('aBack').onclick=drawTpl;
+  $('aBack').onclick=drawSettings;
 }
 async function drawHistory(){
   openSheet(`<div class="sh"><h3>历史版本</h3><button class="ib txt" id="hBack">返回</button></div><div id="hList"><div class="empty" style="padding:24px 0">加载中…</div></div>`);
-  $('hBack').onclick=drawTpl;
+  $('hBack').onclick=drawSettings;
   const {data,error}=await sb.from(T_HIST).select('id, created_at, data').order('id',{ascending:false}).limit(60);
   const box=$('hList');if(!box)return;
   if(error){box.innerHTML=`<div class="empty" style="padding:24px 0">读取失败：${esc(error.message)}</div>`;return;}
