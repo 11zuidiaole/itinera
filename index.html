@@ -151,6 +151,14 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 .qd button.cur span{color:var(--acc);font-weight:600}
 .qd small{color:var(--muted);font-size:12px}
 .pick{display:block;margin-top:10px;background:#fff;border-radius:10px;padding:12px;text-align:center;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;border:1.5px dashed #d6d2ca}
+.fl.flx{display:flex;align-items:center;justify-content:space-between}
+.tedit{border:0;background:none;color:var(--acc);font-size:13px;font-weight:600;padding:0 2px;cursor:pointer}
+.chip.ed{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;padding-right:13px;animation:wig .28s ease-in-out infinite alternate}
+.chip.ed:nth-child(2n){animation-delay:.14s}
+@keyframes wig{from{transform:rotate(-1.2deg)}to{transform:rotate(1.2deg)}}
+.chip .cx{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#1d1d1f;color:#fff;font-size:13px;line-height:19px;text-align:center;font-weight:500}
+.chip.cph{opacity:.25}
+.cghost{position:fixed;z-index:30;pointer-events:none;margin:0;animation:none!important;transform:scale(1.06);box-shadow:0 8px 20px rgba(0,0,0,.18)}
 .link{border:0;background:none;color:var(--text);font-size:14px;font-weight:600;padding:10px 0;cursor:pointer}
 .pv{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--soft);border-radius:10px;margin-bottom:6px}
 .pv input{width:18px;height:18px;accent-color:var(--text);flex:none}
@@ -373,10 +381,11 @@ let lastDel=null,toastT=0;
 function delEvent(id){
   const i=S.events.findIndex(e=>e.id===id);if(i<0)return;
   const ev=S.events[i];S.events.splice(i,1);save();render(true);
-  lastDel={ev,i};$('toastMsg').textContent=`已删除「${ev.name}」`;
-  $('toast').classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>$('toast').classList.remove('on'),5000);
+  showToast(`已删除「${ev.name}」`,()=>{S.events.splice(Math.min(i,S.events.length),0,ev);save();render(true);});
 }
-$('toastUndo').onclick=()=>{if(!lastDel)return;S.events.splice(Math.min(lastDel.i,S.events.length),0,lastDel.ev);lastDel=null;save();render(true);$('toast').classList.remove('on');};
+let undoFn=null;
+function showToast(msg,fn){undoFn=fn;$('toastMsg').textContent=msg;$('toast').classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>{$('toast').classList.remove('on');undoFn=null;},5000);}
+$('toastUndo').onclick=()=>{if(!undoFn)return;const f=undoFn;undoFn=null;$('toast').classList.remove('on');f();};
 function bindRows(){
   const m=$('main');
   m.querySelectorAll('.row').forEach(row=>{
@@ -511,6 +520,7 @@ $('mask').onclick=()=>{closeSheet();cleanTpl();render(true);};
     if(e.touches.length!==1)return;
     const el=e.target;
     if(el.closest('textarea')&&el.closest('textarea').scrollTop>0)return;
+    if(el.closest('.chip.ed'))return;
     y0=e.touches[0].clientY;dy=0;t0=Date.now();drag=false;
   },{passive:true});
   sh.addEventListener('touchmove',e=>{
@@ -560,8 +570,9 @@ function autoColor(date,name,selfId,extra){
   return PAL.slice().sort((a,b)=>n(day,a)-n(day,b)||n(mon,a)-n(mon,b)||PAL.indexOf(a)-PAL.indexOf(b))[0];
 }
 let D=null;
+let tplEdit=false;
 function openEdit(ev,preset){
-  preset=preset||{};
+  preset=preset||{};tplEdit=false;
   if(ev){D={...ev,isNew:false,saveTpl:false};const t=S.templates.find(x=>x.id===ev.tpl);D.dur=t?t.dur:null;}
   else D={id:null,isNew:true,name:'',color:null,date:preset.date||defaultDate(),start:preset.start||'',end:'',period:'',pinned:false,note:'',tpl:null,dur:null,saveTpl:false};
   drawEdit();
@@ -571,7 +582,7 @@ function drawEdit(){
   const per=['','am','pm','eve'].map(p=>`<button class="chip plain${(D.period||'')===p?' on':''}" data-p="${p}">${p?PER[p]:'不限'}</button>`).join('');
   openSheet(`
   <div class="sh"><h3>${D.isNew?'新建活动':'编辑活动'}</h3><button class="ib txt" id="eClose">取消</button></div>
-  <div class="fr"><div class="fl">常用</div>${tpls.length?`<div class="chips">${tpls.map(t=>`<button class="chip${D.tpl===t.id?' on':''}" data-t="${t.id}" style="background:${t.color};color:${fg(t.color)}">${esc(t.name)}</button>`).join('')}</div>`:`<div class="hint">还没有常用活动。可以在右上角添加，或者保存时勾选“存为常用”。</div>`}</div>
+  <div class="fr"><div class="fl flx">常用${tpls.length?`<button class="tedit" id="tEditBtn">${tplEdit?'完成':'编辑'}</button>`:''}</div>${tpls.length?`<div class="chips${tplEdit?' editing':''}" id="tplChips">${tpls.map(t=>`<button class="chip${tplEdit?' ed':''}${!tplEdit&&D.tpl===t.id?' on':''}" data-t="${t.id}" style="background:${t.color};color:${fg(t.color)}">${esc(t.name)}${tplEdit?'<span class="cx" aria-label="删除">×</span>':''}</button>`).join('')}${tplEdit?'<button class="chip plain" id="tAddChip">＋ 添加</button>':''}</div>${tplEdit?'<div class="hint" style="margin-top:8px">拖动调整顺序，点一下修改，× 删除</div>':''}`:`<div class="hint">还没有常用活动。可以在右上角添加，或者保存时勾选“存为常用”。</div>`}</div>
   <div class="fr"><div class="fl">名称</div><input type="text" id="eName" value="${esc(D.name)}" placeholder="要做什么"></div>
   <div class="fr"><div class="fl">日期 <span id="eWd"></span></div><input type="date" id="eDate" value="${D.date}"><div class="chips" id="dq" style="margin-top:8px">${[['今天',0],['明天',1],['后天',2]].map(([t,n])=>`<button class="chip plain" data-n="${n}">${t}</button>`).join('')}</div></div>
   <div class="fr two"><div><div class="fl">开始</div>${tpHTML('eStart',D.start)}</div><div><div class="fl">结束</div>${tpHTML('eEnd',D.end)}</div></div>
@@ -589,12 +600,15 @@ function drawEdit(){
   const perVis=()=>{$('perWrap').style.display=(getT('eStart')||getT('eEnd'))?'none':'';};
   perVis();
   $('eClose').onclick=closeSheet;
-  sh.querySelectorAll('.chip[data-t]').forEach(b=>b.onclick=()=>{
+  if($('tEditBtn'))$('tEditBtn').onclick=()=>{readForm();tplEdit=!tplEdit;drawEdit();};
+  if($('tAddChip'))$('tAddChip').onclick=()=>{readForm();drawTpl(null,drawEdit);};
+  if(!tplEdit)sh.querySelectorAll('.chip[data-t]').forEach(b=>b.onclick=()=>{
     const t=S.templates.find(x=>x.id===b.dataset.t);
     readForm();D.tpl=t.id;D.name=t.name;D.color=t.color;D.dur=t.dur||null;
     if(D.start&&D.dur)D.end=fromMin(toMin(D.start)+D.dur);
     drawEdit();
   });
+  else bindTplEdit($('tplChips'));
   sh.querySelectorAll('#per .chip').forEach(b=>b.onclick=()=>{D.period=b.dataset.p;sh.querySelectorAll('#per .chip').forEach(x=>x.classList.toggle('on',x===b));});
   $('eName').oninput=e=>{const t=S.templates.find(x=>x.id===D.tpl);if(t&&e.target.value!==t.name){D.tpl=null;D.dur=null;sh.querySelectorAll('.chip[data-t]').forEach(c=>c.classList.remove('on'));}};
   let prev=getT('eStart');
@@ -642,28 +656,67 @@ $('fab').onclick=()=>openEdit(null);
 
 /* templates */
 function cleanTpl(){const n=S.templates.length;S.templates=S.templates.filter(t=>t.name);if(S.templates.length!==n)save();}
-function drawTpl(){
-  openSheet(`
-  <div class="sh"><h3>常用活动</h3><button class="ib txt" id="tClose">完成</button></div>
-  <div class="hint" style="margin:-6px 0 16px">点圆点换颜色。设了时长的活动，选好开始时间会自动算出结束时间。</div>
-  <div id="tList">${S.templates.map(t=>`<div class="trow" data-id="${t.id}"><span class="dot" style="background:${t.color}"></span><input type="text" value="${esc(t.name)}" placeholder="名称"><select><option value="">不设时长</option>${DURS.map(d=>`<option value="${d}" ${d===t.dur?'selected':''}>${durTxt(d)}</option>`).join('')}${t.dur&&!DURS.includes(t.dur)?`<option value="${t.dur}" selected>${durTxt(t.dur)}</option>`:''}</select><button class="x" aria-label="删除">×</button></div>`).join('')}</div>
-  ${S.templates.length?'':'<div class="empty" style="padding:24px 0">还没有常用活动</div>'}
-  <button class="link" id="tAdd">+ 添加常用活动</button>`);
-  $('tClose').onclick=()=>{closeSheet();cleanTpl();render(true);};
-  $('tAdd').onclick=()=>{
-    S.templates=S.templates.filter(t=>t.name);
-    S.templates.push({id:uid(),name:'',color:PAL.slice().sort((a,b)=>S.templates.filter(t=>t.color===a).length-S.templates.filter(t=>t.color===b).length)[0],dur:null});drawTpl();
-    const ins=$('tList').querySelectorAll('input');ins[ins.length-1].focus();
-  };
-  $('tList').querySelectorAll('.trow').forEach(r=>{
-    const t=S.templates.find(x=>x.id===r.dataset.id);
-    r.querySelector('.dot').onclick=e=>{t.color=PAL[(PAL.indexOf(t.color)+1)%PAL.length];e.target.style.background=t.color;save();};
-    r.querySelector('input').oninput=e=>{t.name=e.target.value.trim();save();};
-    r.querySelector('select').onchange=e=>{t.dur=e.target.value?+e.target.value:null;save();};
-    r.querySelector('.x').onclick=()=>{S.templates=S.templates.filter(x=>x.id!==t.id);save();drawTpl();};
+function bindTplEdit(box){
+  box.querySelectorAll('.chip[data-t]').forEach(ch=>{
+    ch.querySelector('.cx').onclick=ev=>{
+      ev.stopPropagation();
+      const i=S.templates.findIndex(x=>x.id===ch.dataset.t);if(i<0)return;
+      const t=S.templates[i];S.templates.splice(i,1);save();readForm();if(D.tpl===t.id){D.tpl=null;D.dur=null;}drawEdit();
+      showToast(`已删除常用「${t.name}」`,()=>{S.templates.splice(Math.min(i,S.templates.length),0,t);save();if($('tplChips')||$('eName')){readForm();drawEdit();}});
+    };
+    ch.addEventListener('pointerdown',ev=>{if(ev.target.closest('.cx'))return;ev.preventDefault();chipDrag(ch,ev,box);});
   });
 }
-$('tplBtn').onclick=drawTpl;
+function chipDrag(ch,ev,box){
+  const r=ch.getBoundingClientRect(),ox=ev.clientX-r.left,oy=ev.clientY-r.top;let moved=false,ghost=null;
+  const mv=e=>{
+    if(!moved&&Math.hypot(e.clientX-ev.clientX,e.clientY-ev.clientY)<6)return;
+    if(!moved){moved=true;ghost=ch.cloneNode(true);ghost.classList.add('cghost');Object.assign(ghost.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px'});document.body.appendChild(ghost);ch.classList.add('cph');}
+    ghost.style.left=(e.clientX-ox)+'px';ghost.style.top=(e.clientY-oy)+'px';
+    for(const o of box.querySelectorAll('.chip[data-t]')){
+      if(o===ch)continue;const b=o.getBoundingClientRect();
+      if(e.clientY>=b.top-6&&e.clientY<=b.bottom+6&&e.clientX>=b.left-4&&e.clientX<=b.right+4){if(e.clientX>b.left+b.width/2)o.after(ch);else o.before(ch);break;}
+    }
+  };
+  const up=()=>{
+    window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+    if(ghost)ghost.remove();ch.classList.remove('cph');
+    if(!moved){readForm();drawTpl(ch.dataset.t,drawEdit);return;}
+    const order=[...box.querySelectorAll('.chip[data-t]')].map(c=>c.dataset.t);
+    S.templates.sort((a,b)=>{const x=order.indexOf(a.id),y=order.indexOf(b.id);return (x<0?1e9:x)-(y<0?1e9:y);});save();
+  };
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+}
+const freeColor=()=>PAL.slice().sort((a,b)=>S.templates.filter(t=>t.color===a).length-S.templates.filter(t=>t.color===b).length)[0];
+// 添加常用（id 为空）或修改某一个常用（传 id）；back 是完成后回到哪一页
+function drawTpl(id,back){
+  const editing=typeof id==='string'?S.templates.find(t=>t.id===id):null;
+  let rows=editing?[{...editing}]:[{id:uid(),name:'',color:freeColor(),dur:null}];
+  const rowHTML=t=>`<div class="trow" data-id="${t.id}"><span class="dot" style="background:${t.color}"></span><input type="text" value="${esc(t.name)}" placeholder="名称，比如 健身"><select><option value="">不设时长</option>${DURS.map(d=>`<option value="${d}" ${d===t.dur?'selected':''}>${durTxt(d)}</option>`).join('')}${t.dur&&!DURS.includes(t.dur)?`<option value="${t.dur}" selected>${durTxt(t.dur)}</option>`:''}</select></div>`;
+  const draw=()=>{
+    openSheet(`
+    <div class="sh"><h3>${editing?'修改常用':'添加常用活动'}</h3><button class="ib txt" id="tClose">完成</button></div>
+    <div class="hint" style="margin:-6px 0 16px">点色块换颜色。设了时长的，选好开始时间会自动算出结束时间。</div>
+    <div id="tList">${rows.map(rowHTML).join('')}</div>
+    ${editing?'':'<button class="link" id="tAdd">＋ 再加一个</button>'}`);
+    $('tList').querySelectorAll('.trow').forEach((r,k)=>{
+      const t=rows[k];
+      r.querySelector('.dot').onclick=e=>{t.color=PAL[(PAL.indexOf(t.color)+1)%PAL.length];e.target.style.background=t.color;};
+      r.querySelector('input').oninput=e=>{t.name=e.target.value.trim();};
+      r.querySelector('select').onchange=e=>{t.dur=e.target.value?+e.target.value:null;};
+    });
+    if($('tAdd'))$('tAdd').onclick=()=>{rows.push({id:uid(),name:'',color:PAL[(PAL.indexOf(rows[rows.length-1].color)+1)%PAL.length],dur:null});draw();const ins=$('tList').querySelectorAll('input');ins[ins.length-1].focus();};
+    $('tClose').onclick=()=>{
+      if(editing){const t=rows[0];if(t.name){Object.assign(editing,{name:t.name,color:t.color,dur:t.dur});}}
+      else rows.filter(t=>t.name).forEach(t=>S.templates.push(t));
+      save();
+      if(back)back();else{closeSheet();render(true);}
+    };
+    const first=$('tList').querySelector('input');if(first&&!editing)setTimeout(()=>first.focus(),250);
+  };
+  draw();
+}
+$('tplBtn').onclick=()=>drawTpl();
 /* import from memo */
 /* local memo parser */
 function localParse(text,today){
