@@ -156,6 +156,10 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 .chip.ed{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;padding-right:13px;animation:wig .28s ease-in-out infinite alternate}
 .chip.ed:nth-child(2n){animation-delay:.14s}
 @keyframes wig{from{transform:rotate(-1.2deg)}to{transform:rotate(1.2deg)}}
+.chips.editing{gap:14px 16px;padding-top:6px}
+.chip.addin{width:92px;border:1.5px dashed #d6d2ca;background:#fff;color:var(--text);font-size:13px;font-weight:600;padding:7px 10px;min-height:0;border-radius:8px;outline:none;cursor:text}
+.chip.addin:focus{width:140px;border-color:var(--acc)}
+.chip.addin::placeholder{color:var(--muted)}
 .chip .cx{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#1d1d1f;color:#fff;font-size:13px;line-height:19px;text-align:center;font-weight:500}
 .chip.cph{opacity:.25}
 .cghost{position:fixed;z-index:30;pointer-events:none;margin:0;animation:none!important;transform:scale(1.06);box-shadow:0 8px 20px rgba(0,0,0,.18)}
@@ -173,7 +177,6 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
   <button class="ib txt" id="today">今天</button>
   <button class="ib" id="next" aria-label="下一页"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
   <button class="ib" id="impBtn" aria-label="粘贴行程"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg></button>
-  <button class="ib" id="tplBtn" aria-label="常用活动"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><path d="M16.5 13.5v6M13.5 16.5h6"/></svg></button>
   <button class="ib" id="setBtn" aria-label="设置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </header>
 <div class="seg" id="seg">
@@ -570,7 +573,7 @@ function autoColor(date,name,selfId,extra){
   return PAL.slice().sort((a,b)=>n(day,a)-n(day,b)||n(mon,a)-n(mon,b)||PAL.indexOf(a)-PAL.indexOf(b))[0];
 }
 let D=null;
-let tplEdit=false;
+let tplEdit=false,editSince=0;
 function openEdit(ev,preset){
   preset=preset||{};tplEdit=false;
   if(ev){D={...ev,isNew:false,saveTpl:false};const t=S.templates.find(x=>x.id===ev.tpl);D.dur=t?t.dur:null;}
@@ -582,7 +585,7 @@ function drawEdit(){
   const per=['','am','pm','eve'].map(p=>`<button class="chip plain${(D.period||'')===p?' on':''}" data-p="${p}">${p?PER[p]:'不限'}</button>`).join('');
   openSheet(`
   <div class="sh"><h3>${D.isNew?'新建活动':'编辑活动'}</h3><button class="ib txt" id="eClose">取消</button></div>
-  <div class="fr"><div class="fl flx">常用${tpls.length?`<button class="tedit" id="tEditBtn">${tplEdit?'完成':'编辑'}</button>`:''}</div>${tpls.length?`<div class="chips${tplEdit?' editing':''}" id="tplChips">${tpls.map(t=>`<button class="chip${tplEdit?' ed':''}${!tplEdit&&D.tpl===t.id?' on':''}" data-t="${t.id}" style="background:${t.color};color:${fg(t.color)}">${esc(t.name)}${tplEdit?'<span class="cx" aria-label="删除">×</span>':''}</button>`).join('')}${tplEdit?'<button class="chip plain" id="tAddChip">＋ 添加</button>':''}</div>${tplEdit?'<div class="hint" style="margin-top:8px">拖动调整顺序，点一下修改，× 删除</div>':''}`:`<div class="hint">还没有常用活动。可以在右上角添加，或者保存时勾选“存为常用”。</div>`}</div>
+  <div class="fr"><div class="fl flx">常用${tpls.length?`<button class="tedit" id="tEditBtn">${tplEdit?'完成':'编辑'}</button>`:''}</div>${tpls.length?`<div class="chips${tplEdit?' editing':''}" id="tplChips">${tpls.map(t=>`<button class="chip${tplEdit?' ed':''}${!tplEdit&&D.tpl===t.id?' on':''}" data-t="${t.id}" style="background:${t.color};color:${fg(t.color)}">${esc(t.name)}${tplEdit?'<span class="cx" aria-label="删除">×</span>':''}</button>`).join('')}${tplEdit?'<input class="chip addin" id="tAddIn" placeholder="＋ 添加" enterkeyhint="done" maxlength="20">':''}</div>${tplEdit?'<div class="hint" style="margin-top:8px">拖动调整顺序，点一下改颜色和时长，× 删除</div>':''}`:`<div class="chips" id="tplChips"><input class="chip addin" id="tAddIn" placeholder="＋ 添加常用" enterkeyhint="done" maxlength="20"></div>`}</div>
   <div class="fr"><div class="fl">名称</div><input type="text" id="eName" value="${esc(D.name)}" placeholder="要做什么"></div>
   <div class="fr"><div class="fl">日期 <span id="eWd"></span></div><input type="date" id="eDate" value="${D.date}"><div class="chips" id="dq" style="margin-top:8px">${[['今天',0],['明天',1],['后天',2]].map(([t,n])=>`<button class="chip plain" data-n="${n}">${t}</button>`).join('')}</div></div>
   <div class="fr two"><div><div class="fl">开始</div>${tpHTML('eStart',D.start)}</div><div><div class="fl">结束</div>${tpHTML('eEnd',D.end)}</div></div>
@@ -600,8 +603,15 @@ function drawEdit(){
   const perVis=()=>{$('perWrap').style.display=(getT('eStart')||getT('eEnd'))?'none':'';};
   perVis();
   $('eClose').onclick=closeSheet;
-  if($('tEditBtn'))$('tEditBtn').onclick=()=>{readForm();tplEdit=!tplEdit;drawEdit();};
-  if($('tAddChip'))$('tAddChip').onclick=()=>{readForm();drawTpl(null,drawEdit);};
+  if($('tEditBtn'))$('tEditBtn').onclick=()=>{readForm();tplEdit=!tplEdit;editSince=Date.now();drawEdit();};
+  if($('tAddIn')){
+    const inp=$('tAddIn');let done=false;
+    const add=()=>{const v=inp.value.trim();if(!v||done)return;done=true;
+      if(!S.templates.some(t=>t.name===v))S.templates.push({id:uid(),name:v,color:freeColor(),dur:null});
+      save();readForm();drawEdit();const n=$('tAddIn');if(n)n.focus();};
+    inp.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();add();}};
+    inp.onblur=add;
+  }
   if(!tplEdit)sh.querySelectorAll('.chip[data-t]').forEach(b=>b.onclick=()=>{
     const t=S.templates.find(x=>x.id===b.dataset.t);
     readForm();D.tpl=t.id;D.name=t.name;D.color=t.color;D.dur=t.dur||null;
@@ -659,7 +669,7 @@ function cleanTpl(){const n=S.templates.length;S.templates=S.templates.filter(t=
 function bindTplEdit(box){
   box.querySelectorAll('.chip[data-t]').forEach(ch=>{
     ch.querySelector('.cx').onclick=ev=>{
-      ev.stopPropagation();
+      ev.stopPropagation();if(Date.now()-editSince<600)return;
       const i=S.templates.findIndex(x=>x.id===ch.dataset.t);if(i<0)return;
       const t=S.templates[i];S.templates.splice(i,1);save();readForm();if(D.tpl===t.id){D.tpl=null;D.dur=null;}drawEdit();
       showToast(`已删除常用「${t.name}」`,()=>{S.templates.splice(Math.min(i,S.templates.length),0,t);save();if($('tplChips')||$('eName')){readForm();drawEdit();}});
@@ -716,7 +726,7 @@ function drawTpl(id,back){
   };
   draw();
 }
-$('tplBtn').onclick=()=>drawTpl();
+
 /* import from memo */
 /* local memo parser */
 function localParse(text,today){
