@@ -133,6 +133,12 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 .hrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:13px}
 .hrow span{flex:1}
 .hrow small{color:var(--muted)}
+.qd{position:fixed;z-index:9;width:170px;background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:5px;display:none}
+.qd.on{display:block}
+.qd button{display:flex;width:100%;align-items:center;justify-content:space-between;border:0;background:none;padding:10px 11px;border-radius:8px;font-size:15px;color:var(--text);cursor:pointer}
+.qd button:active,.qd button:hover{background:var(--bg)}
+.qd button.cur span{color:var(--acc);font-weight:600}
+.qd small{color:var(--muted);font-size:12px}
 .link{border:0;background:none;color:var(--text);font-size:14px;font-weight:600;padding:10px 0;cursor:pointer}
 .pv{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--soft);border-radius:10px;margin-bottom:6px}
 .pv input{width:18px;height:18px;accent-color:var(--text);flex:none}
@@ -154,6 +160,7 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
   <button data-v="month">月</button><button data-v="week">周</button><button data-v="day">日</button>
 </div>
 <main id="main"></main>
+<div class="qd" id="qd"></div>
 <button class="fab" id="fab" aria-label="新建活动">+</button>
 <div class="dz" id="dz">松手删除</div>
 <div class="mask" id="mask"></div>
@@ -398,7 +405,11 @@ function nav(d){
   render();
 }
 $('prev').onclick=()=>nav(-1);$('next').onclick=()=>nav(1);
-$('today').onclick=()=>{cur=new Date();render();};
+$('today').onclick=e=>{e.stopPropagation();const m=$('qd');if(m.classList.contains('on')){m.classList.remove('on');return;}
+  m.innerHTML=[['前天',-2],['昨天',-1],['今天',0],['明天',1],['后天',2]].map(([t,n])=>{const d=addD(new Date(),n);return `<button data-n="${n}"${n===0?' class="cur"':''}><span>${t}</span><small>${d.getMonth()+1}/${d.getDate()} ${wdName(d)}</small></button>`;}).join('');
+  const r=$('today').getBoundingClientRect();m.style.top=(r.bottom+6)+'px';m.style.left=Math.max(8,Math.min(window.innerWidth-178,r.left+r.width/2-85))+'px';m.classList.add('on');};
+$('qd').onclick=e=>{const b=e.target.closest('[data-n]');if(!b)return;const n=+b.dataset.n;cur=addD(new Date(),n);if(n!==0)view='day';$('qd').classList.remove('on');render();};
+document.addEventListener('click',e=>{if(!e.target.closest('#qd'))$('qd').classList.remove('on');});
 document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{
   if(view==='month'&&b.dataset.v!=='month'){const n=new Date();if(n.getMonth()===cur.getMonth()&&n.getFullYear()===cur.getFullYear())cur=n;}
   view=b.dataset.v;render();
