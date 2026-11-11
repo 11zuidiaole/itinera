@@ -522,7 +522,7 @@ function drawTpl(){
   <div class="hint" style="margin:0 0 14px">点圆点换颜色。设了时长的活动，选好开始时间会自动算出结束时间。</div>
   <div id="tList">${S.templates.map(t=>`<div class="trow" data-id="${t.id}"><span class="dot" style="background:${t.color}"></span><input type="text" value="${esc(t.name)}" placeholder="名称"><select><option value="">不设时长</option>${DURS.map(d=>`<option value="${d}" ${d===t.dur?'selected':''}>${durTxt(d)}</option>`).join('')}${t.dur&&!DURS.includes(t.dur)?`<option value="${t.dur}" selected>${durTxt(t.dur)}</option>`:''}</select><button class="x" aria-label="删除">×</button></div>`).join('')}</div>
   ${S.templates.length?'':'<div class="empty" style="padding:24px 0">还没有常用活动</div>'}
-  <button class="link" id="tAdd">+ 添加</button>`);
+  <button class="link" id="tAdd">+ 添加常用活动</button>`);
   $('tClose').onclick=()=>{closeSheet();cleanTpl();render(true);};
   bindSync();
   $('tAdd').onclick=()=>{
