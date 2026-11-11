@@ -139,6 +139,7 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 .qd button:active,.qd button:hover{background:var(--bg)}
 .qd button.cur span{color:var(--acc);font-weight:600}
 .qd small{color:var(--muted);font-size:12px}
+.pick{display:block;margin-top:10px;background:#fff;border-radius:10px;padding:12px;text-align:center;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;border:1.5px dashed #d6d2ca}
 .link{border:0;background:none;color:var(--text);font-size:14px;font-weight:600;padding:10px 0;cursor:pointer}
 .pv{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--soft);border-radius:10px;margin-bottom:6px}
 .pv input{width:18px;height:18px;accent-color:var(--text);flex:none}
@@ -739,19 +740,39 @@ function drawImport(text){
   <div class="sh"><h3>粘贴行程</h3><button class="ib txt" id="iClose">取消</button></div>
   <div class="hint" style="margin:-6px 0 12px">把备忘录里的行程直接粘进来，比如“周三 下午3点健身”“7:45 吃饭”“明天 交作业”。没写日期的会沿用上一行的日期。</div>
   <textarea id="iText" placeholder="粘贴到这里">${esc(text||'')}</textarea>
+  <label class="pick"><input type="file" id="iImg" accept="image/*" multiple hidden><span id="iImgLbl">${IMGS.length?`已选 ${IMGS.length} 张截图 · 重新选`:'＋ 选择截图（携程、订单等）'}</span></label>
   <div class="err" id="iErr" style="margin-top:10px"></div>
   <button class="btn" id="iGo">整理</button>`);
-  $('iClose').onclick=closeSheet;
+  $('iClose').onclick=()=>{IMGS=[];closeSheet();};
   $('iGo').onclick=runImport;
+  $('iImg').onchange=async e=>{
+    const files=[...e.target.files].slice(0,8);if(!files.length)return;
+    $('iImgLbl').textContent='处理中…';
+    try{IMGS=await Promise.all(files.map(shrink));}catch(x){IMGS=[];}
+    $('iImgLbl').textContent=IMGS.length?`已选 ${IMGS.length} 张截图 · 重新选`:'读取失败，换一张试试';
+  };
+}
+let IMGS=[];
+function shrink(file){return new Promise((res,rej)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{const k=Math.min(1,1568/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);const d=c.toDataURL('image/jpeg',0.85);res({type:'image/jpeg',data:d.split(',')[1]});};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej();};img.src=url;});}
+async function askCloud(prompt,images){
+  const {data,error}=await sb.functions.invoke('itinera-ai',{body:{prompt,images}});
+  if(error){let m=error.message;try{const b=await error.context.json();if(b&&b.error)m=b.error;}catch(e){}throw new Error(m);}
+  if(data&&data.error)throw new Error(data.error);
+  const t=(data&&data.text)||'';const m=t.match(/\[[\s\S]*\]/);return JSON.parse(m?m[0]:t);
 }
 async function runImport(){
   const text=$('iText').value.trim(),err=m=>{$('iErr').textContent=m;};
-  if(!text)return err('先粘贴内容');
+  if(!text&&!IMGS.length)return err('先粘贴内容或选择截图');
   const b=$('iGo');b.disabled=true;b.textContent='整理中…';err('');
   const sample=(window.claude&&claude.use)?await Promise.race([sampleP,new Promise(r=>setTimeout(()=>r(null),1500))]):null;
   const now=new Date(),days=[];
   for(let i=0;i<14;i++){const d=addD(now,i);days.push(ymd(d)+' '+wdName(d));}
-  const prompt=`你是日程整理助手。把用户从手机备忘录粘贴的行程整理成 JSON 数组，只输出 JSON 数组，不要其他文字。
+  const prompt=`你是日程整理助手。把用户从手机备忘录粘贴的行程${IMGS.length?'和附上的截图（携程等 App 的订单/行程页面）':''}整理成 JSON 数组，只输出 JSON 数组，不要其他文字。
 
 今天是 ${ymd(now)}（${wdName(now)}）。接下来两周的日期：${days.join('，')}。
 日期规则：
@@ -768,12 +789,21 @@ async function runImport(){
 不要编造原文没有的时间。像“晚上：”“上午”这种小标题，表示下面几行都在这个时段，没写上下午的时间按它来算（晚上：7:30 = 19:30）。忽略【】、[ ]、○ 这类勾选框符号。缩进在某一项下面的子项不要单独列出，把它们用“、”连起来放进上一项的 note。没写上下午时按常识判断：晚饭/晚餐 7:45 = 19:45，午饭 1点 = 13:00，早饭 7点 = 07:00。一行有多件事就拆开。航班/火车：name 写成“航班号 出发地 → 到达地”，start/end 用起飞和到达时间；跨天到达时 end 留空，另加一项“航班号 抵达 某地”放在到达那天、end 填到达时间；航站楼、时长、预订号放 note。忽略订单详情、选座、送机广告等按钮文字。
 ${S.templates.length?`用户的常用活动：${S.templates.filter(t=>t.name).map(t=>t.name).join('、')}。意思一样时用这个名称。`:''}
 
-原文：
+${text?`原文：
 """
 ${text}
-"""`;
+"""`:'内容都在截图里。'}`;
   let out;
-  if(!sample){out=tripParse(text,new Date())||localParse(text,new Date());}
+  const cloud=!sample&&sb&&sbUser;
+  if(!sample&&!cloud&&IMGS.length){b.disabled=false;b.textContent='整理';return err('识别截图要先登录（右上角齿轮 → 登录）');}
+  if(cloud){
+    try{out=await askCloud(prompt,IMGS);}
+    catch(e){
+      if(IMGS.length||!text){b.disabled=false;b.textContent='整理';return err('AI 整理失败：'+e.message);}
+      out=tripParse(text,new Date())||localParse(text,new Date());
+    }
+  }
+  else if(!sample){out=tripParse(text,new Date())||localParse(text,new Date());}
   else try{
     try{out=await sample.json(prompt,{modelTier:'default'});}
     catch(e){if(e&&(e.code==='not_granted'||e.code==='rate_limited'))throw e;const r=await sample(prompt,{modelTier:'default'});const m=r.text.match(/\[[\s\S]*\]/);out=JSON.parse(m?m[0]:r.text);}
@@ -814,7 +844,7 @@ function drawPreview(text){
       if(!x.start&&!x.end)order=evsOn(x.date).filter(e=>!timed(e)).reduce((m,e)=>Math.max(m,e.order||0),-1)+1;
       S.events.push({id:uid(),name:x.name,color:x.color,date:x.date,start:x.start,end:x.end,period:x.period,pinned:false,note:x.note,tpl:x.tpl,order});
     });
-    save();closeSheet();
+    save();closeSheet();IMGS=[];
     const first=add.map(x=>x.date).sort()[0];cur=parse(first);render();
   };
 }
