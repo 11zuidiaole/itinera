@@ -110,6 +110,8 @@ input::placeholder,textarea::placeholder{color:#BDBDBD}
 .chip.plain.on{background:var(--text);color:#fff;box-shadow:none}
 .sw{display:flex;gap:7px;flex-wrap:wrap}
 .sw span{width:27px;height:27px;border-radius:8px;cursor:pointer}
+.sw span.auto{width:auto;padding:0 8px;font-size:11px;font-weight:600;line-height:27px;color:var(--muted);background:#fff;border:1.5px dashed #d6d2ca}
+.sw span.auto.on{color:var(--text);border-color:var(--text);box-shadow:none}
 .sw span.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--text)}
 .two{display:flex;gap:12px}.two>div{flex:1;min-width:0}
 .tg{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;user-select:none}
@@ -339,12 +341,14 @@ function bindRows(){
     row.querySelector('.pin').onclick=ev=>{ev.stopPropagation();if(suppress)return;const e=S.events.find(x=>x.id===id);e.pinned=!e.pinned;save();render(true);};
     let x0,y0,mode,timer,base,ghost,offY,dx=0;
     row.addEventListener('touchstart',ev=>{
+      if(ev.touches.length>1){clearTimeout(timer);if(mode==='swipe'){rc.style.transform='';rc.classList.remove('nt');}mode=null;return;}
       const t=ev.touches[0];x0=t.clientX;y0=t.clientY;mode='pending';dx=0;
       base=openRow===row?-84:0;
       if(openRow&&openRow!==row)closeOpen();
       if(isTodo)timer=setTimeout(()=>startDrag(t),420);
     },{passive:true});
     row.addEventListener('touchmove',ev=>{
+      if(ev.touches.length>1||!mode)return;
       const t=ev.touches[0],mx=t.clientX-x0,my=t.clientY-y0;
       if(mode==='pending'){
         if(Math.abs(mx)>8||Math.abs(my)>8){clearTimeout(timer);mode=(Math.abs(mx)>Math.abs(my))?'swipe':'scroll';if(mode==='swipe'){rc.classList.add('nt');row.classList.add('sw');}}
@@ -399,10 +403,32 @@ document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{
   if(view==='month'&&b.dataset.v!=='month'){const n=new Date();if(n.getMonth()===cur.getMonth()&&n.getFullYear()===cur.getFullYear())cur=n;}
   view=b.dataset.v;render();
 });
+
+/* pinch: spread to zoom in (month→week→day), pinch to zoom out */
+let pinch=null;
+function zoomIn(x,y){
+  const el=document.elementFromPoint(x,y);
+  if(view==='month'){const c=el&&el.closest('.cell');if(c)cur=parse(c.dataset.d);view='week';}
+  else if(view==='week'){const c=el&&(el.closest('[data-d]'));if(c)cur=parse(c.dataset.d);view='day';}
+  else return;
+  render();
+}
+function zoomOut(){if(view==='day')view='week';else if(view==='week')view='month';else return;render();}
+$('main').addEventListener('touchstart',e=>{
+  if(e.touches.length===2){const[a,b]=e.touches;pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2,done:false};}
+},{passive:true});
+$('main').addEventListener('touchmove',e=>{
+  if(e.touches.length!==2||!pinch)return;
+  e.preventDefault();if(pinch.done)return;
+  const[a,b]=e.touches,r=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/pinch.d;
+  if(r>1.3){pinch.done=true;zoomIn(pinch.x,pinch.y);}else if(r<0.77){pinch.done=true;zoomOut();}
+},{passive:false});
+$('main').addEventListener('touchend',e=>{if(e.touches.length===0&&pinch)setTimeout(()=>{pinch=null;},80);});
+document.addEventListener('gesturestart',e=>e.preventDefault());
 let tx=0,ty=0;
 $('main').addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
 $('main').addEventListener('touchend',e=>{
-  if(e.target.closest('.row'))return;
+  if(pinch||e.target.closest('.row'))return;
   const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
   if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)nav(dx<0?1:-1);
 },{passive:true});
@@ -432,11 +458,20 @@ function defaultDate(){
   if(view==='week'){const ws=monStart(cur);return (n>=ws&&n<addD(ws,7))?ymd(n):ymd(ws);}
   return ymd(cur);
 }
+
+function autoColor(date,name,selfId,extra){
+  const all=S.events.filter(e=>e.id!==selfId).concat(extra||[]);
+  const same=all.find(e=>e.name===name&&e.color);if(same)return same.color;
+  const t=S.templates.find(t=>t.name===name);if(t)return t.color;
+  const day=all.filter(e=>e.date===date).map(e=>e.color),mon=all.filter(e=>(e.date||'').slice(0,7)===(date||'').slice(0,7)).map(e=>e.color);
+  const n=(arr,c)=>arr.filter(x=>x===c).length;
+  return PAL.slice().sort((a,b)=>n(day,a)-n(day,b)||n(mon,a)-n(mon,b)||PAL.indexOf(a)-PAL.indexOf(b))[0];
+}
 let D=null;
 function openEdit(ev,preset){
   preset=preset||{};
   if(ev){D={...ev,isNew:false,saveTpl:false};const t=S.templates.find(x=>x.id===ev.tpl);D.dur=t?t.dur:null;}
-  else D={id:null,isNew:true,name:'',color:PAL[0],date:preset.date||defaultDate(),start:preset.start||'',end:'',period:'',pinned:false,note:'',tpl:null,dur:null,saveTpl:false};
+  else D={id:null,isNew:true,name:'',color:null,date:preset.date||defaultDate(),start:preset.start||'',end:'',period:'',pinned:false,note:'',tpl:null,dur:null,saveTpl:false};
   drawEdit();
 }
 function drawEdit(){
@@ -449,7 +484,7 @@ function drawEdit(){
   <div class="fr"><div class="fl">日期 <span id="eWd"></span></div><input type="date" id="eDate" value="${D.date}"><div class="chips" id="dq" style="margin-top:8px">${[['今天',0],['明天',1],['后天',2]].map(([t,n])=>`<button class="chip plain" data-n="${n}">${t}</button>`).join('')}</div></div>
   <div class="fr two"><div><div class="fl">开始</div>${tpHTML('eStart',D.start)}</div><div><div class="fl">结束</div>${tpHTML('eEnd',D.end)}</div></div>
   <div class="fr" id="perWrap"><div class="fl">大概什么时候</div><div class="chips" id="per">${per}</div></div>
-  <div class="fr"><div class="fl">颜色</div><div class="sw">${PAL.map(c=>`<span data-c="${c}" class="${c===D.color?'on':''}" style="background:${c}"></span>`).join('')}</div></div>
+  <div class="fr"><div class="fl">颜色 · 不选会自动配</div><div class="sw"><span data-c="" class="auto${!D.color?' on':''}">自动</span>${PAL.map(c=>`<span data-c="${c}" class="${c===D.color?'on':''}" style="background:${c}"></span>`).join('')}</div></div>
   <div class="fr"><div class="fl">备注</div><input type="text" id="eNote" value="${esc(D.note||'')}" placeholder="可不填"></div>
   <div class="fr two"><label class="tg"><input type="checkbox" id="ePin" ${D.pinned?'checked':''}>置顶</label>${!D.tpl&&D.isNew?`<label class="tg"><input type="checkbox" id="eSaveTpl" ${D.saveTpl?'checked':''}>存为常用</label>`:'<div></div>'}</div>
   <div class="err" id="eErr"></div>
@@ -482,7 +517,7 @@ function drawEdit(){
   };
   $('eStartH').onchange=onStart;$('eStartM').onchange=onStart;
   $('eEndH').onchange=()=>{syncMin('eEnd');perVis();};
-  sh.querySelectorAll('.sw span').forEach(s=>s.onclick=()=>{D.color=s.dataset.c;sh.querySelectorAll('.sw span').forEach(x=>x.classList.toggle('on',x===s));});
+  sh.querySelectorAll('.sw span').forEach(s=>s.onclick=()=>{D.color=s.dataset.c||null;sh.querySelectorAll('.sw span').forEach(x=>x.classList.toggle('on',x===s));});
   $('eSave').onclick=saveEdit;
   if($('eDel'))$('eDel').onclick=function(){
     if(this.dataset.c){closeSheet();delEvent(D.id);}
@@ -506,7 +541,7 @@ function saveEdit(){
   if(!D.start&&!D.end&&(order==null||!old||old.date!==D.date||timed(old))){
     order=evsOn(D.date).filter(e=>!timed(e)&&e.id!==D.id).reduce((m,e)=>Math.max(m,e.order||0),-1)+1;
   }
-  const e={id:D.id||uid(),name:D.name,color:D.color,date:D.date,start:D.start,end:D.end,period:D.period||'',pinned:D.pinned,note:D.note,tpl:D.tpl,order};
+  const e={id:D.id||uid(),name:D.name,color:D.color||autoColor(D.date,D.name,D.id),date:D.date,start:D.start,end:D.end,period:D.period||'',pinned:D.pinned,note:D.note,tpl:D.tpl,order};
   const i=S.events.findIndex(x=>x.id===e.id);
   if(i>=0)S.events[i]=e;else S.events.push(e);
   save();closeSheet();render(true);
@@ -525,7 +560,7 @@ function drawTpl(){
   $('tClose').onclick=()=>{closeSheet();cleanTpl();render(true);};
   $('tAdd').onclick=()=>{
     S.templates=S.templates.filter(t=>t.name);
-    S.templates.push({id:uid(),name:'',color:PAL[S.templates.length%PAL.length],dur:null});drawTpl();
+    S.templates.push({id:uid(),name:'',color:PAL.slice().sort((a,b)=>S.templates.filter(t=>t.color===a).length-S.templates.filter(t=>t.color===b).length)[0],dur:null});drawTpl();
     const ins=$('tList').querySelectorAll('input');ins[ins.length-1].focus();
   };
   $('tList').querySelectorAll('.trow').forEach(r=>{
@@ -612,12 +647,12 @@ function localParse(text,today){
 
 const sampleP=(window.claude&&claude.use)?claude.use('sample').catch(()=>null):Promise.resolve(null);
 const r15=t=>{if(!/^\d{1,2}:\d{2}$/.test(t||''))return '';const m=Math.round(toMin(t)/15)*15;return fromMin(m);};
-const hashColor=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return PAL[h%(PAL.length-1)];};
+
 let IMP=[];
 function drawImport(text){
   openSheet(`
   <div class="sh"><h3>粘贴行程</h3><button class="ib txt" id="iClose">取消</button></div>
-  <div class="hint" style="margin:-6px 0 12px">把备忘录里的行程直接粘进来，比如“周三 下午3点古筝”“7:45 吃饭”“明天 交作业”。没写日期的会沿用上一行的日期。</div>
+  <div class="hint" style="margin:-6px 0 12px">把备忘录里的行程直接粘进来，比如“周三 下午3点健身”“7:45 吃饭”“明天 交作业”。没写日期的会沿用上一行的日期。</div>
   <textarea id="iText" placeholder="粘贴到这里">${esc(text||'')}</textarea>
   <div class="err" id="iErr" style="margin-top:10px"></div>
   <button class="btn" id="iGo">整理</button>`);
@@ -662,6 +697,7 @@ ${text}
     return err(e&&e.code==='not_granted'?'没有获得授权，无法整理':e&&e.code==='rate_limited'?'请求太频繁，稍等一下再试':'没整理出来，可以再试一次');
   }
   if(out&&!Array.isArray(out))out=out.items||out.events||[];
+  const acc=[];
   IMP=(out||[]).filter(x=>x&&x.name&&/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')).map(x=>{
     const name=String(x.name).trim();
     const t=S.templates.find(t=>t.name&&t.name===name);
@@ -669,7 +705,8 @@ ${text}
     if(start&&!end&&t&&t.dur)end=fromMin(toMin(start)+t.dur);
     if(start&&end&&toMin(end)<=toMin(start))end='';
     const period=(!start&&!end&&PER[x.period])?x.period:'';
-    return {name,date:x.date,start,end,period,note:String(x.note||'').trim(),tpl:t?t.id:null,color:t?t.color:hashColor(name),on:true};
+    const it={name,date:x.date,start,end,period,note:String(x.note||'').trim(),tpl:t?t.id:null,color:t?t.color:autoColor(x.date,name,null,acc),on:true};
+    acc.push({name:it.name,date:it.date,color:it.color});return it;
   });
   if(!IMP.length){b.disabled=false;b.textContent='整理';return err('没找到能排的活动，换个写法再试试');}
   drawPreview(text);
